@@ -3,9 +3,8 @@ package container
 import java.util.concurrent.ExecutorService
 
 import container.ImageDownloader.Executor
-//import Container.NetworkService.HttpHost
 import org.apache.http.HttpHost
-import container.OCI.{ConfigurationData, ManifestData, _}
+import container.OCI.{ManifestData, _}
 import container.Status.note
 import Registry._
 
@@ -14,7 +13,8 @@ import io.circe._
 import io.circe.parser._
 import DockerMetadata._
 import better.files.{File => BFile}
-import squants.time.Seconds
+import squants.time._
+import java.io.File
 
 import scala.concurrent.Future
 
@@ -145,16 +145,17 @@ json = {"id":"8a71d4786d3d25edf9acf9e6783a1e3db45dd267be3033c3d1970c0552f7a95f",
 //  () => T => Future[T]
 
   ///////////////////
-  def downloadContainerImage(dockerImage: DockerImage): SavedDockerImage = {
+  def downloadContainerImage(dockerImage: DockerImage, path: File, timeout: Time): SavedDockerImage = {
     note(" - creating image directory")
-    val dir = BFile(dockerImage.imageName).createDirectoryIfNotExists()
+    val imagePath = path.getAbsolutePath + "/" + dockerImage.imageName
+    val dir = BFile(imagePath).createDirectoryIfNotExists()
 
     // SEE WHAT TO DO WITH THIS-------//
     val opt: Option[HttpHost] = None //
     val net = new NetworkService(opt) //
     //--------------------------------//
 
-    manifest(dockerImage, downloadManifest(dockerImage, Seconds(10))(net)) match {
+    manifest(dockerImage, downloadManifest(dockerImage, timeout)(net)) match {
       case Right(value) => {
         // 1. First get the configData
         note(" - collecting configData")
