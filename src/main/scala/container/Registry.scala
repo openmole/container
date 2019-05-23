@@ -80,9 +80,7 @@ case class BuiltDockerImage(file: File,
                             imageName: String,
                          //   configurationData: ConfigurationData,
                             command: Seq[String] = Seq()) extends ContainerImage
-//
 
-//
 object Stream {
   def copy(inputStream: InputStream, outputStream: OutputStream) = {
     val DefaultBufferSize = 16 * 1024
@@ -155,10 +153,8 @@ object Registry {
     def execute[T](get: HttpGet, checkError: Boolean = true, preventGetHeaderForward: Boolean = false)(f: HttpResponse ⇒ T)(implicit networkService: NetworkService) = {
       val response = client(preventGetHeaderForward = preventGetHeaderForward)(networkService).execute(get)
 
-      if (checkError && response.getStatusLine.getStatusCode >= 300) {
-        throw new UserBadDataError(s"Docker registry responded with $response to the query $get, content is ${response.getEntity.getContent.toString()}")
-   // /!\    throw new UserBadDataError(s"Docker registry responded with $response to the query $get, content is ${response.getEntity.getContent.mkString}")
-      }
+      if (checkError && response.getStatusLine.getStatusCode >= 300)
+        throw new UserBadDataError(s"Docker registry responded with $response to the query $get, content is ${response.getEntity.getContent.toString}")
       try f(response)
       finally response.close()
     }
@@ -272,63 +268,5 @@ object Registry {
     * @param timeout Download timeout
     * @param newFile OM temporary file creation service
     */
-
-
-  // CONCURRENCY NOT SECURED
-    def writeConfigFile(manifest: Manifest, name: String): Unit = {
-      note(" - writing configuration file")
-      BFile(name + "/config.json").appendLine("{")
-      val last = manifest.value.history.get.last.v1Compatibility.substring(1,manifest.value.history.get.last.v1Compatibility.length)
-      for (x <- manifest.value.history.get.init)
-        BFile(name + "/config.json").appendLine(x.v1Compatibility.substring(1, x.v1Compatibility.length - 1) + ",")
-      BFile(name + "/config.json"). appendLine(last)
-    }
-
-    def writeManifestFile(layersHash : List[String], name: String, tag : String): Unit = {
-      note(" - writing manifest file")
-      val config = "[{\"Config\":\"config.json\","
-      val repotag = "\"RepoTags\":[\"" + name + ":" + tag + "\"],"
-      val layers = "\"Layers\":["
-      val last = layersHash.last
-      BFile(name + "/manifest.json").appendLine(config + repotag + layers)
-      for (hash <- layersHash.init)
-        BFile(name + "/manifest.json").appendLine("\"" + hash + ".tar.gz\",")
-      BFile(name + "/manifest.json").appendLine("\"" + last + ".tar.gz\"]}]")
-    }
-
-
-  def downloadLayers(dockerImage: DockerImage, timeout: Time = Seconds(10))(implicit networkService: NetworkService): Option[BFile] = {
-    note(" - creating image directory")
-    val dir = BFile(dockerImage.imageName).createDirectoryIfNotExists()
-    manifest(dockerImage, downloadManifest(dockerImage,timeout)(networkService)) match {
-      case Right(value) => {
-        writeConfigFile(value, dockerImage.imageName)
-        val layersHash = value.value.fsLayers.get.map(_.blobSum).distinct
-        writeManifestFile(layersHash, dockerImage.imageName, dockerImage.tag)
-        for (hash <- layersHash) {
-          blob(dockerImage, Layer(hash), BFile(dockerImage.imageName + "/" + hash + ".tar.gz"), timeout)(networkService)
-          note(" - downloading image's layer : " + hash + ".tar.gz")
-        }
-        Some(dir)
-      }
-      case /*Left(msg)*/_ => None //println(msg)
-    }
-  }
-
-
-  /*
-  def downloadLayer(dockerImage: DockerImage, layer: Layer, layersDirectory: File, layerFile: File, timeout: Time)(implicit newFile: File, networkservice: NetworkService): Unit =
-    newFile.withTmpFile { tmpFile ⇒
-      blob(dockerImage, layer, tmpFile, timeout)
-      layersDirectory.withLockInDirectory { if (!layerFile.exists) tmpFile.moveTo(layerFile) }
-    }
-*/
-/*
-  def downloadLayer(dockerImage: DockerImage, layer: Layer, layersDirectory: OMFile, layerFile: File, timeout: Time)(implicit newFile: NewFile, networkservice: NetworkService): Unit =
-    newFile.withTmpFile { tmpFile ⇒
-      blob(dockerImage, layer, tmpFile, timeout)
-      layersDirectory.withLockInDirectory { if (!layerFile.exists) tmpFile.moveTo(layerFile) }
-    }
-*/
 }
 

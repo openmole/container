@@ -6,7 +6,6 @@ import container.Extractor._
 import container.OCI._
 
 object ImageBuilder {
-
   case class FileNotFound(file: File) extends Exception
   case class InvalidImage(file: File) extends Exception
   case class DirectoryFileCollision(file: File) extends Exception

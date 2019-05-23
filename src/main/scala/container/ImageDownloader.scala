@@ -3,7 +3,6 @@ package container
 import java.util.concurrent.ExecutorService
 import org.apache.http.HttpHost
 import container.OCI.{ManifestData, _}
-import container.Status.note
 import Registry._
 import scala.sys.process._
 import io.circe._
@@ -14,7 +13,6 @@ import squants.time._
 import java.io.File
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-
 
 object ImageDownloader {
 
