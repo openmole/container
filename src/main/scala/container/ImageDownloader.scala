@@ -80,6 +80,7 @@ object ImageDownloader {
   ///////////////////
   def downloadContainerImage(dockerImage: DockerImage, path: File, timeout: Time): SavedDockerImage = {
     val imagePath = path.getAbsolutePath + "/" + dockerImage.imageName
+    println("IMAGE PATH = " + imagePath)
     val dir = BFile(imagePath).createDirectoryIfNotExists()
 
     // SEE WHAT TO DO WITH THIS-------//

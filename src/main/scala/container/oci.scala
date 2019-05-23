@@ -1,21 +1,13 @@
 package container
 
 import container.Status._
-import better.files.File
-//import net.liftweb.json._
 import java.io.IOException
 import java.nio.file._
-import java.util.function.Predicate
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
-
 import io.circe.parser._
-
 import io.circe.Decoder
-import io.circe._
-
 import io.circe.generic.semiauto._
-
 
 object InternetProtocol {
     sealed abstract class InternetProtocol (val typeProtocol: String)
@@ -23,35 +15,29 @@ object InternetProtocol {
     case object UDP extends InternetProtocol("UDP")
     case object OTHER extends InternetProtocol("OTHER")
 }
-import InternetProtocol._
 
 object OCI {
-
-
   case class InvalidManifest(manifest: String) extends Exception
   case class InvalidConfigData(config: String) extends Exception
-//    implicit val formats = DefaultFormats
+  case class EmptyObject()
 
-    case class EmptyObject()
-    case class ManifestData(
-        Config: Option[String],
-        RepoTags: List[String],
-        Layers: List[String]
-        )
-    implicit val ManifestDecoder: Decoder[ManifestData] = deriveDecoder
-     // Decoder.forProduct3("Config", "RepoTags", "Layers")(ManifestData.apply)
+  case class ManifestData(
+       Config: Option[String],
+       RepoTags: List[String],
+       Layers: List[String]
+       )
+  implicit val ManifestDecoder: Decoder[ManifestData] = deriveDecoder
 
-    case class ConfigurationData(
-        Cmd: Option[List[String]], 
-        Entrypoint: Option[List[String]], 
-        Env: Option[List[String]],
-        ExposedPots: Option[Map[String, String]],//EmptyObject]],
-        User: Option[String],
-        Volumes: Option[Map[String, String]], //EmptyObject]],
-        WorkingDir: Option[String]
-        )
+  case class ConfigurationData(
+       Cmd: Option[List[String]],
+       Entrypoint: Option[List[String]],
+       Env: Option[List[String]],
+       ExposedPots: Option[Map[String, String]],//EmptyObject]],
+       User: Option[String],
+       Volumes: Option[Map[String, String]], //EmptyObject]],
+       WorkingDir: Option[String]
+       )
   implicit val ConfigurationDataDecoder: Decoder[ConfigurationData] = deriveDecoder
-
 
   //TODO: test
     def getManifestFile(rootFiles: Array[String]): Option[String] = {
@@ -61,7 +47,6 @@ object OCI {
     }
     
     def harvestManifestData(manifestRaw: String) = {
-  //    println("\nharvestManifestData:\n" + manifestRaw.substring(1, manifestRaw.length - 1))
       val manifest = decode[ManifestData](manifestRaw.substring(1, manifestRaw.length - 1))
       manifest match {
         case Right(m) => m
@@ -70,21 +55,13 @@ object OCI {
     }
 
     def harvestConfigData(configRaw: String) = {
- //     println("\nharvestManifestData:\n" + configRaw.substring(1, configRaw.length - 1))
       val config = decode[ConfigurationData](configRaw)
       config match {
         case Right(c) => c
         case _ => throw InvalidConfigData(configRaw)
       }
- /*
-        val rootAST = parse(configRaw)
-        var configAST = rootAST \   "config"
-        val result = configAST.extract[ConfigurationData]
-        result
-   */
     }
-    
-    
+
     object WhiteoutUtils{
         /* @see <a href="https://github.com/docker/docker/blob/master/pkg/archive/whiteouts.go">Whiteout files</a> */
         /* indicates a file removed in recent layers */
