@@ -73,7 +73,7 @@ object Main extends App {
     case Failure(e) => println(s"Failure! $e")
   }
 */
-  ContainerExecutor.executeContainerWithDocker(buildImageForDocker(downloadContainerImage(DockerImage(args(0), command = Seq("/bin/ls")))))
+  //ContainerExecutor.executeContainerWithDocker(buildImageForDocker(downloadContainerImage(DockerImage(args(0), command = Seq("/bin/ls")))))
    //ContainerExecutor.executeContainerWithDocker(buildImageForDocker(SavedDockerImage("python", File("/home/iscpif/containers/python").toJava, false, Seq("/bin/ls"))))//File("/home/iscpif/containers/p.tar").toJava)))// Seq("/bin/echo \"Hello world\"")))
 
  // buildImageForDocker(test)
