@@ -1,12 +1,12 @@
-package Container
+package container
 
 import java.util.concurrent.ExecutorService
 
-import Container.ImageDownloader.Executor
+import container.ImageDownloader.Executor
 //import Container.NetworkService.HttpHost
 import org.apache.http.HttpHost
-import Container.OCI.{ConfigurationData, ManifestData, _}
-import Container.Status.note
+import container.OCI.{ConfigurationData, ManifestData, _}
+import container.Status.note
 import Registry._
 
 import scala.sys.process._

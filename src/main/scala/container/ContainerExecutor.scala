@@ -1,8 +1,8 @@
-package Container
+package container
 
-import Container.ImageBuilder.checkImageFile
+import container.ImageBuilder.checkImageFile
 import scala.sys.process._
-import Container.Status.note
+import container.Status.note
 import better.files.{File => BFile, _}
 
 

@@ -1,4 +1,4 @@
-package Container
+package container
 
 /**
   * Copyright (C) 2017 Jonathan Passerat-Palmbach

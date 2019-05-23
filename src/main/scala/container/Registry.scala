@@ -1,4 +1,4 @@
-package Container
+package container
 
 import better.files.{File => BFile, _}
 import java.io.{File, _}
@@ -6,7 +6,7 @@ import java.util.concurrent.{Callable, ThreadPoolExecutor, TimeUnit, TimeoutExce
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 import java.net.URI
 
-import Container.OCI.{ConfigurationData, ManifestData}
+import container.OCI.{ConfigurationData, ManifestData}
 import org.apache.http.{Header, HttpHost, HttpRequest, HttpResponse}
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.methods.{HttpGet, HttpHead, HttpUriRequest, RequestBuilder}
@@ -22,7 +22,7 @@ import cats.implicits._
 import io.circe.Json
 import org.apache.http.protocol.HttpContext
 
-import Container.Status._
+import container.Status._
 
 // A remplacer ...
 class UserBadDataError(exception: Throwable, val message: String) extends Exception(message, exception) {

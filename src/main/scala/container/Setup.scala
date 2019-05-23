@@ -1,4 +1,4 @@
-package Container
+package container
 
 import squants.time._
 

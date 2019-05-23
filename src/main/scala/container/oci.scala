@@ -1,6 +1,6 @@
-package Container
+package container
 
-import Container.Status._
+import container.Status._
 import better.files.File
 //import net.liftweb.json._
 import java.io.IOException

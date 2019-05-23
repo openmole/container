@@ -1,12 +1,12 @@
-package Container
+package container
 
 import better.files._
 import java.io.IOException
 
-import Container.Status._
+import container.Status._
 
 import scala.sys.process._
-import Container.ImageBuilder._
+import container.ImageBuilder._
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 
 object Extractor {

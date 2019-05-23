@@ -1,13 +1,13 @@
-package Container
+package container
 
-import Container.Registry._
+import container.Registry._
 import org.apache.http.HttpHost
 
 import scala.sys.process._
 
 //import better.files.{File => BFile, _}
 import better.files._
-import Container.Status._
+import container.Status._
 
 import ImageBuilder._
 import ContainerExecutor._

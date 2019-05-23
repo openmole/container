@@ -1,10 +1,10 @@
-package Container
+package container
 
 import java.io.File
 import better.files.{File => BFile, _}
-import Container.Status._
-import Container.Extractor._
-import Container.OCI._
+import container.Status._
+import container.Extractor._
+import container.OCI._
 import scala.sys.process._
 
 object ImageBuilder {
