@@ -120,7 +120,8 @@ object Extractor {
         executeCommand(cmd)
     }
 
-    def compressFile(dirPath: String, archiveName: String, verbose: Boolean = true): Unit = {
+  // FIXME don't use tar
+    def compressFile(dirPath: File, archive: File, verbose: Boolean = true): Unit = {
      //   val cmd =
         /*    if (verbose) */
      //   println(s"find $dirPath -printf \'%P\\n\' | tar -cvf $dirPath.tar --no-recursion -C $dirPath/ -T -")
@@ -129,10 +130,7 @@ object Extractor {
       //  Seq(s"find $dirPath", "-printf", "\"\%P\\n\"") #| Seq(s"tar -cvf $archiveName.tar --no-recursion -C $dirPath -T -") !!
             //"tar -cvf " + archiveName + ".tar -C " + dirPath + " ."
       //      else         s"find $dirPath -printf \"%P\\n\" | tar -cf $archiveName.tar --no-recursion -C $dirPath -T -"/
-
-        val cmd = "tar -cf " + archiveName + ".tar -C " + dirPath + " ."
-        println(cmd)
-
+        val cmd = s"tar -cf ${archive.getAbsolutePath} -C ${dirPath.getAbsolutePath} ${dirPath.listFiles().map(_.getName).mkString(" ")}"
         executeCommand(cmd)
     }
 

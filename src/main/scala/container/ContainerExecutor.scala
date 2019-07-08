@@ -6,13 +6,16 @@ import java.io.File
 
 
 object ContainerExecutor {
-    def executeContainerWithDocker(image: BuiltDockerImage)(binPath: File): Unit = {
+    def executeContainerWithDocker(image: BuiltDockerImage): Unit = {
+      println(image.file)
       checkImageFile(image.file)
       val file = image.file.getAbsolutePath
-      ("docker load -i" +  file).!!
-      if (image.command.isEmpty)
-        ("docker run " + image.imageName).!!
-      else (binPath.getAbsolutePath +"docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
+
+      println("docker load -i " +  file)
+      ("docker load -i " +  file).!!
+
+      if (image.command.isEmpty) ("docker run " + image.imageName).!!
+      else ("docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
     }
 
   def executeContainerWithoutDocker(image: BuiltPRootImage)(binPath: File): Unit = {

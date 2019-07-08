@@ -38,8 +38,7 @@ object ImageDownloader {
     val layers = "\"Layers\":["
     var manifest = config + repotag + layers
     val last = layersHash.reverse.last
-    for (hash <- layersHash.reverse.init)
-      manifest = manifest + "\"" + hash + "/layer.tar\","
+    for (hash <- layersHash.reverse.init) manifest = manifest + "\"" + hash + "/layer.tar\","
     manifest + "\"" + last + "/layer.tar\"]}]"
   }
 
@@ -48,7 +47,7 @@ object ImageDownloader {
      x
    }
 
-  def writeConfigFiles(path: String, manifest: String, config: String): Unit = {
+  def writeManifestAndConfigFiles(path: String, manifest: String, config: String): Unit = {
     BFile(path + "/config.json").appendLine(config)
     BFile(path + "/manifest.json").appendLine(manifest)
   }
@@ -78,7 +77,6 @@ object ImageDownloader {
   ///////////////////
   def downloadContainerImage(dockerImage: DockerImage, path: File, timeout: Time): SavedDockerImage = {
     val imagePath = path.getAbsolutePath + "/" + dockerImage.imageName
-    println("IMAGE PATH = " + imagePath)
     val dir = BFile(imagePath).createDirectoryIfNotExists()
 
     // SEE WHAT TO DO WITH THIS-------//
@@ -87,7 +85,7 @@ object ImageDownloader {
     //--------------------------------//
 
     manifest(dockerImage, downloadManifest(dockerImage, timeout)(net)) match {
-      case Right(value) => {
+      case Right(value) =>
         // 1. First get the configData
         val configString = getConfigAsString(value)//, dockerImage.imageName)
         val configJson = parse(configString).getOrElse(Json.Null)
@@ -105,12 +103,17 @@ object ImageDownloader {
             }
           }
         }
+
+
         val layersHash = value.value.fsLayers.get.map(_.blobSum)
+
         val manifestString = getManifestAsString(layersIDS, dockerImage.imageName, dockerImage.tag)
+
+
         val manifestData: ManifestData = harvestManifestData(manifestString)
 
         // 3. Write manifest and config files
-        writeConfigFiles(dir.pathAsString, manifestString, configString)
+        writeManifestAndConfigFiles(dir.pathAsString, manifestString, configString)
 
         // 4. Download the layers
         for ((hash, id) <- layersHash zip layersIDS) {
@@ -123,8 +126,8 @@ object ImageDownloader {
             }
           }
           SavedDockerImage(dockerImage.imageName, dir.toJava)
-        }
-          case _ => throw ImageNotFound(dockerImage)
-        }
+
+        case _ => throw ImageNotFound(dockerImage)
       }
+    }
   }

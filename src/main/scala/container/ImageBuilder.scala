@@ -12,31 +12,31 @@ object ImageBuilder {
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
   val rootfsName = "rootfs"
 
-    def buildImageForDocker(image: SavedDockerImage): BuiltDockerImage = {
-      if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
-      val path = image.file.toScala.pathAsString
-      BFile(path + "/manifest.json").delete()
-      compressFile(path, image.imageName)
-      BuiltDockerImage(BFile(image.imageName + ".tar").toJava, image.imageName, image.command)
-    }
+  def buildImageForDocker(image: SavedDockerImage, archive: File): BuiltDockerImage = {
+    if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
+    //val path = image.file.toScala.pathAsString
+    //BFile(path + "/manifest.json").delete()
+    compressFile(image.file, archive)
+    BuiltDockerImage(archive, image.imageName, image.command)
+  }
 
-    def buildImageForProot(image: SavedDockerImage): BuiltPRootImage =
-      buildImage(analyseImage(extractImage(image)))
+  def buildImageForProot(image: SavedDockerImage): BuiltPRootImage =
+    buildImage(analyseImage(extractImage(image)))
 
-    def extractImage(savedDockerImage: SavedDockerImage): SavedDockerImage = {
-      checkImageFile(savedDockerImage.file)
-      if (!savedDockerImage.file.isDirectory) {
-        val (path, archiveName) = getPathAndFileName(savedDockerImage.file.getAbsolutePath)
-        if(!isAnArchive(archiveName)) throw InvalidImage(savedDockerImage.file)
-          val directoryPath = getDirectoryPath(path, archiveName)
-          if(BFile(directoryPath).exists && !BFile(directoryPath).isDirectory)
-              throw DirectoryFileCollision(BFile(directoryPath).toJava)
-          val directory = BFile(directoryPath).createDirectoryIfNotExists()
-          extractArchive(path + archiveName, directoryPath)
-          SavedDockerImage(savedDockerImage.imageName, directory.toJava, false, savedDockerImage.command)
-      }
-      else savedDockerImage
+  def extractImage(savedDockerImage: SavedDockerImage): SavedDockerImage = {
+    checkImageFile(savedDockerImage.file)
+    if (!savedDockerImage.file.isDirectory) {
+      val (path, archiveName) = getPathAndFileName(savedDockerImage.file.getAbsolutePath)
+      if(!isAnArchive(archiveName)) throw InvalidImage(savedDockerImage.file)
+        val directoryPath = getDirectoryPath(path, archiveName)
+        if(BFile(directoryPath).exists && !BFile(directoryPath).isDirectory)
+            throw DirectoryFileCollision(BFile(directoryPath).toJava)
+        val directory = BFile(directoryPath).createDirectoryIfNotExists()
+        extractArchive(path + archiveName, directoryPath)
+        SavedDockerImage(savedDockerImage.imageName, directory.toJava, false, savedDockerImage.command)
     }
+    else savedDockerImage
+  }
     
     /** Retrieve metadata (layer ids, env variables, volumes, ports, commands)
       * from the manifest and configuration files.
