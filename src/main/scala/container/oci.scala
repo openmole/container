@@ -137,16 +137,13 @@ object OCI {
         return OK
     }
     
-    def deleteRecursively(path: Path) {
-        if(Files.isDirectory(path)) {
-            Files.walk(path).iterator()
-                    .foreach(p => if(!p.equals(path)) deleteRecursively(p))
-            Files.deleteIfExists(path)
-        }
-        else {
-            Files.deleteIfExists(path)
-            }
-    }
+    def deleteRecursively(path: Path): Unit =
+      if(Files.isDirectory(path)) {
+        Files.walk(path).iterator().foreach(p => if(!p.equals(path)) deleteRecursively(p))
+        Files.deleteIfExists(path)
+      }
+      else Files.deleteIfExists(path)
+
 }
 
 
