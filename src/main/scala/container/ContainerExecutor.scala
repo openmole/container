@@ -18,11 +18,11 @@ object ContainerExecutor {
       else ("docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
     }
 
-  def executeContainerWithoutDocker(image: BuiltPRootImage)(binPath: File): Unit = {
+  def executeContainerWithPRoot(proot: File, image: BuiltPRootImage): Unit = {
     checkImageFile(image.file)
     val path = image.file.getAbsolutePath + "/"
     prepareEnvVariables(image.configurationData.Env)
-    val status = Seq(binPath.getAbsolutePath + "proot", "-r", path + "rootfs/").union(image.command) .!!
+    val status = Seq(proot.getAbsolutePath, "-r", path + "rootfs/").union(image.command) .!!
   }
 
   def prepareEnvVariables(maybeArgs: Option[List[String]]) {

@@ -1,22 +1,20 @@
 package container
 
-import java.util.concurrent.ExecutorService
-
-import org.apache.http.HttpHost
-import container.OCI.{ManifestData, _}
-import Registry._
-
-import scala.sys.process._
-import io.circe._
-import io.circe.parser._
-import DockerMetadata._
-import better.files.{File => BFile}
-import squants.time._
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ExecutorService
 
-import scala.concurrent.Future
+import better.files.{File => BFile}
+import container.DockerMetadata._
+import container.Registry._
+import io.circe._
+import io.circe.parser._
+import org.apache.http.HttpHost
+import squants.time._
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.sys.process._
 
 object ImageDownloader {
 

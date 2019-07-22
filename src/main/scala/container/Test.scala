@@ -28,7 +28,10 @@ object Test extends App {
   File("/tmp/test").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, new java.io.File("/tmp/test"), 1 minutes)
-  val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
-  ContainerExecutor.executeContainerWithDocker(build)
+  val build = ImageBuilder.buildImageForProot(saved)
+
+  ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build)
+  //val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
+  //ContainerExecutor.executeContainerWithDocker(build)
 
 }
