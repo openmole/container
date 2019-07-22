@@ -20,22 +20,20 @@ object ImageBuilder {
     BuiltDockerImage(archive, image.imageName, image.command)
   }
 
-  def buildImageForProot(image: SavedDockerImage): BuiltPRootImage =
-    buildImage(analyseImage(extractImage(image)))
+  def buildImageForProot(image: SavedDockerImage, workDirectory: File): BuiltPRootImage =
+    buildImage(analyseImage(extractImage(image, workDirectory)), workDirectory)
 
-  def extractImage(savedDockerImage: SavedDockerImage): SavedDockerImage = {
+  //FIXME use type system to encode tarred docker image
+  def extractImage(savedDockerImage: SavedDockerImage, workDirectory: File): SavedDockerImage = {
     checkImageFile(savedDockerImage.file)
     if (!savedDockerImage.file.isDirectory) {
       val (path, archiveName) = getPathAndFileName(savedDockerImage.file.getAbsolutePath)
       if(!isAnArchive(archiveName)) throw InvalidImage(savedDockerImage.file)
-        val directoryPath = getDirectoryPath(path, archiveName)
-        if(BFile(directoryPath).exists && !BFile(directoryPath).isDirectory)
-            throw DirectoryFileCollision(BFile(directoryPath).toJava)
-        val directory = BFile(directoryPath).createDirectoryIfNotExists()
-        extractArchive(path + archiveName, directoryPath)
-        SavedDockerImage(savedDockerImage.imageName, directory.toJava, false, savedDockerImage.command)
-    }
-    else savedDockerImage
+      val directory = workDirectory
+      workDirectory.mkdirs()
+      extractArchive(path + archiveName, directory.getAbsolutePath)
+      SavedDockerImage(savedDockerImage.imageName, directory, false, savedDockerImage.command)
+    } else savedDockerImage
   }
     
     /** Retrieve metadata (layer ids, env variables, volumes, ports, commands)
@@ -61,19 +59,19 @@ object ImageBuilder {
       * Also, delete the whiteout files.
       * Return a BuiltImage
       */
-    def buildImage(preparedImage: PreparedImage): BuiltPRootImage = {
-        checkImageFile(preparedImage.file)
-        val directoryPath = preparedImage.file.getAbsolutePath + "/"
+    def buildImage(preparedImage: PreparedImage, workDirectory: File): BuiltPRootImage = {
+        //checkImageFile(preparedImage.file)
+        val directoryPath = workDirectory.getAbsolutePath + "/"
         val rootfsPath = directoryPath + rootfsName + "/"
         BFile(rootfsPath).createDirectoryIfNotExists()
+
         val layers = preparedImage.manifestData.Layers
         layers.foreach{
-            layerName => {
-                extractArchive(directoryPath + layerName, rootfsPath)
-                removeWhiteouts(rootfsPath)
-            }
+          layerName =>
+            extractArchive((preparedImage.file.toScala / layerName).pathAsString, rootfsPath)
+            removeWhiteouts(rootfsPath)
         }
-        BuiltPRootImage(preparedImage.file, preparedImage.configurationData, preparedImage.command)
+        BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
     }
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)

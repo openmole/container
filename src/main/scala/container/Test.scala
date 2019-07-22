@@ -25,12 +25,12 @@ object Test extends App {
 
   val image = DockerImage("openmole/fake")
   
-  File("/tmp/test").delete(swallowIOExceptions = true)
+  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
 
-  val saved = ImageDownloader.downloadContainerImage(image, new java.io.File("/tmp/test"), 1 minutes)
-  val build = ImageBuilder.buildImageForProot(saved)
+  val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
+  val build = ImageBuilder.buildImageForProot(saved, File("/tmp/proot-work/").toJava)
 
-  ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build)
+  ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build, Some(Seq("/bin/ls")))
   //val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
   //ContainerExecutor.executeContainerWithDocker(build)
 

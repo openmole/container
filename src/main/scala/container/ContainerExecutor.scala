@@ -6,23 +6,21 @@ import java.io.File
 
 
 object ContainerExecutor {
-    def executeContainerWithDocker(image: BuiltDockerImage): Unit = {
-      println(image.file)
-      checkImageFile(image.file)
-      val file = image.file.getAbsolutePath
-
-      println("docker load -i " +  file)
-      ("docker load -i " +  file).!!
-
-      if (image.command.isEmpty) ("docker run " + image.imageName).!!
-      else ("docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
-    }
-
-  def executeContainerWithPRoot(proot: File, image: BuiltPRootImage): Unit = {
+  def executeContainerWithDocker(image: BuiltDockerImage): Unit = {
     checkImageFile(image.file)
+    val file = image.file.getAbsolutePath
+    ("docker load -i " +  file).!!
+    if (image.command.isEmpty) ("docker run " + image.imageName).!!
+    else ("docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
+  }
+
+  def executeContainerWithPRoot(proot: File, image: BuiltPRootImage, command: Option[Seq[String]] = None): Unit = {
+    checkImageFile(image.file)
+
     val path = image.file.getAbsolutePath + "/"
-    prepareEnvVariables(image.configurationData.Env)
-    val status = Seq(proot.getAbsolutePath, "-r", path + "rootfs/").union(image.command) .!!
+    val status = (Seq(proot.getAbsolutePath, "-r", path + "rootfs/") ++ command.getOrElse(image.command)) .!!
+
+    println(status)
   }
 
   def prepareEnvVariables(maybeArgs: Option[List[String]]) {

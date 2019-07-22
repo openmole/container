@@ -117,6 +117,7 @@ object Extractor {
         val cmd =
             if (verbose) "tar -xvf " + archivePath + " -C " + extractionDirectory
             else "tar -xf " + archivePath + " -C " + extractionDirectory
+
         executeCommand(cmd)
     }
 
