@@ -161,7 +161,7 @@ object DockerMetadata {
   implicit val imageJSONEncoder: Encoder[ImageJSON] = deriveEncoder
 
   import Registry.Manifest
-  def v1HistoryToImageJson(manifest: Manifest/*, layersHash: List[String]*/): ImageJSON = {
+  def v1HistoryToImageJson(manifest: Manifest, layersHash: Map[String, String]): ImageJSON = {
     val rawJsonImage = parse(manifest.value.history.get.head.v1Compatibility).getOrElse(Json.Null)
     val cursor: HCursor = rawJsonImage.hcursor
     val created = cursor.get[DockerDate]("created").toOption
@@ -169,7 +169,7 @@ object DockerMetadata {
     val architecture = cursor.get[String]("architecture").toOption
     val os = cursor.get[String]("os").toOption
     val config = cursor.downField("config").as[ContainerConfig].toOption //
-    val rootfs = Some(RootFS(diff_ids = manifest.value.fsLayers.get.map(_.blobSum)))
+    val rootfs = Some(RootFS(diff_ids = manifest.value.fsLayers.get.reverse.map { l => "sha256:" + layersHash(l.blobSum) } ))
     val history =
       for ( x <- manifest.value.history.get.tail.reverse) yield decode[HistoryEntry](x.v1Compatibility) match {
         case Right(value) => value

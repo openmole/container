@@ -23,12 +23,12 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = DockerImage("hello-world")
+  val image = DockerImage("openmole/fake")
   
   File("/tmp/test").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, new java.io.File("/tmp/test"), 1 minutes)
-  val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/hello.tar"))
+  val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
   ContainerExecutor.executeContainerWithDocker(build)
 
 }

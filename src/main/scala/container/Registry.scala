@@ -253,7 +253,7 @@ object Registry {
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""
     execute(Token.withToken(url, timeout), preventGetHeaderForward = true) { response ⇒
       val os = file.newOutputStream
-      try Stream.copy(response.getEntity.getContent, os)
+      try Stream.copy(new GZIPInputStream(response.getEntity.getContent), os)
       finally os.close()
     }
   }
