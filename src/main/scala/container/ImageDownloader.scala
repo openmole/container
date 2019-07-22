@@ -46,7 +46,7 @@ object ImageDownloader {
     manifest + "\"" + last + "/layer.tar\"]}]"
   }
 
-   def getConfigAsString(manifest: Manifest, layersHash: Map[String, String]) = {
+   def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) = {
       val x = imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
      x
    }
@@ -89,30 +89,39 @@ object ImageDownloader {
 
           val layersIDS = {
             val raw = conf.map(_.v1Compatibility)
-            for (x <- raw) yield {
+            raw.map { x =>
               val parsed = parse(x).getOrElse(Json.Null)
               val cursor: HCursor = parsed.hcursor
+
+              val ignore =
+                cursor.get[Boolean]("throwaway") match {
+                  case Right(value) => value
+                  case Left(error) => false
+                }
+
               cursor.get[String]("id") match {
-                case Right(id) => id
+                case Right(id) => id -> ignore
                 case Left(error) => throw error
               }
             }
           }
 
           val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
+          val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
 
-          val layersHashMap = collection.mutable.HashMap[String, String]()
-          for ((hash, id) <- layersHash zip layersIDS) {
+          for {
+            (hash, (id, ignore)) <- layersHash zip layersIDS
+          } if(!ignore) {
             val dirName = UUID.randomUUID().toString
             val layerDir = dir / dirName
             layerDir.createDirectories()
 
             BFile(layerDir.pathAsString + "/VERSION").appendLine("1.0")
 
-            blob(dockerImage, Layer(hash), BFile(layerDir.pathAsString + "/" + "layer.tar"), Seconds(10))(net)
+            blob(dockerImage, Layer(hash), BFile(layerDir.pathAsString + "/" + "layer.tar"), timeout)(net)
             val layerHash = Hash.sha256(BFile(layerDir.pathAsString + "/" + "layer.tar").toJava)
 
-            layersHashMap.put(hash, layerHash)
+            layersHashMap.put(hash, Some(layerHash))
 
             if (!BFile(layerDir.pathAsString + "/json").exists && conf.nonEmpty) {
               BFile(layerDir.pathAsString + "/json").appendLine(conf.head.v1Compatibility)
@@ -120,13 +129,13 @@ object ImageDownloader {
             }
 
             layerDir moveTo (dir / layerHash)
-          }
+          } else layersHashMap.put(hash, None)
 
-          val configString = getConfigAsString(manifestValue, layersHashMap.toMap)//, dockerImage.imageName)
+          val configString = getConfigAsString(manifestValue, layersHashMap.toMap)
           val configName = Hash.sha256(configString) + ".json"
           BFile(dir.pathAsString + s"/$configName").appendLine(configString)
 
-          val manifestString = getManifestAsString(layersHash.map(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
+          val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
           BFile(dir.pathAsString + "/manifest.json").appendLine(manifestString)
 
 
