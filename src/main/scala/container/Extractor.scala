@@ -131,8 +131,10 @@ object Extractor {
       //  Seq(s"find $dirPath", "-printf", "\"\%P\\n\"") #| Seq(s"tar -cvf $archiveName.tar --no-recursion -C $dirPath -T -") !!
             //"tar -cvf " + archiveName + ".tar -C " + dirPath + " ."
       //      else         s"find $dirPath -printf \"%P\\n\" | tar -cf $archiveName.tar --no-recursion -C $dirPath -T -"/
-        val cmd = s"tar -cf ${archive.getAbsolutePath} -C ${dirPath.getAbsolutePath} ${dirPath.listFiles().map(_.getName).mkString(" ")}"
-        executeCommand(cmd)
+//        val cmd = s"tar -cf ${archive.getAbsolutePath} -C ${dirPath.getAbsolutePath} ${dirPath.listFiles().map(_.getName).mkString(" ")}"
+//        executeCommand(cmd)
+
+      Tar.archive(dirPath, archive, includeDirectoryName = false)
     }
 
 

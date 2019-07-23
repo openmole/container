@@ -28,10 +28,10 @@ object Test extends App {
   File("/tmp/docker-repo").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
-  val build = ImageBuilder.buildImageForProot(saved, File("/tmp/proot-work/").toJava)
-
-  ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build, Some(Seq("/bin/ls")))
-  //val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
-  //ContainerExecutor.executeContainerWithDocker(build)
+//  val build = ImageBuilder.buildImageForProot(saved, File("/tmp/proot-work/").toJava)
+  //ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build, Some(Seq("/bin/ls")))
+  
+  val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
+  ContainerExecutor.executeContainerWithDocker(build)
 
 }
