@@ -17,8 +17,11 @@
 package container
 
 import container.ImageBuilder.checkImageFile
+
 import scala.sys.process._
 import java.io.File
+
+import container.proot.generatePRootScript
 
 
 object ContainerExecutor {
@@ -34,7 +37,11 @@ object ContainerExecutor {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
-    val status = (Seq(proot.getAbsolutePath, "-r", path + "rootfs/") ++ command.getOrElse(image.command)) .!!
+    val rootFSPath = path + "rootfs/"
+
+    generatePRootScript(path, image.configurationData)
+
+    val status = (Seq(path + "launcher.sh", "run", proot.getAbsolutePath, rootFSPath) ++ command.getOrElse(image.command)) .!!
 
     println(status)
   }
