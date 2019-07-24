@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2016 Vincent Hage
+ * Copyright (C) 2019 Pierre Peigne
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package container
 
 import container.Status._
@@ -29,13 +46,13 @@ object OCI {
   implicit val ManifestDecoder: Decoder[ManifestData] = deriveDecoder
 
   case class ConfigurationData(
-       Cmd: Option[List[String]],
-       Entrypoint: Option[List[String]],
-       Env: Option[List[String]],
-       ExposedPots: Option[Map[String, String]],//EmptyObject]],
-       User: Option[String],
-       Volumes: Option[Map[String, String]], //EmptyObject]],
-       WorkingDir: Option[String]
+                                Cmd: Option[List[String]],
+                                Entrypoint: Option[List[String]],
+                                Env: Option[List[String]],
+                                ExposedPorts: Option[Map[String, String]], //EmptyObject]],
+                                User: Option[String],
+                                Volumes: Option[Map[String, String]], //EmptyObject]],
+                                WorkingDir: Option[String]
        )
   implicit val ConfigurationDataDecoder: Decoder[ConfigurationData] = deriveDecoder
 
