@@ -6,21 +6,21 @@ import java.io.File
 
 
 object ContainerExecutor {
-  def executeContainerWithDocker(image: BuiltDockerImage): Unit = {
+
+  def executeContainerWithDocker(image: BuiltDockerImage, command: Option[Seq[String]] = None) = {
     checkImageFile(image.file)
     val file = image.file.getAbsolutePath
-    ("docker load -i " +  file).!!
-    if (image.command.isEmpty) ("docker run " + image.imageName).!!
-    else ("docker run " + image.imageName + " sh -c "+ image.command.mkString(""," ", "")) .!
+    ("docker load -i " +  file) !!
+
+    val commandValue = command.getOrElse(image.command)
+    Seq("docker", "run", image.imageName) ++ commandValue !!
   }
 
-  def executeContainerWithPRoot(proot: File, image: BuiltPRootImage, command: Option[Seq[String]] = None): Unit = {
+  def executeContainerWithPRoot(proot: File, image: BuiltPRootImage, command: Option[Seq[String]] = None) = {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
-    val status = (Seq(proot.getAbsolutePath, "-r", path + "rootfs/") ++ command.getOrElse(image.command)) .!!
-
-    println(status)
+    (Seq(proot.getAbsolutePath, "-r", path + "rootfs/") ++ command.getOrElse(image.command)) .!!
   }
 
   def prepareEnvVariables(maybeArgs: Option[List[String]]) {

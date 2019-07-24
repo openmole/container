@@ -16,22 +16,20 @@ object ImageBuilder {
     if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
     //val path = image.file.toScala.pathAsString
     //BFile(path + "/manifest.json").delete()
-    compressFile(image.file, archive)
+    Tar.archive(image.file, archive)
     BuiltDockerImage(archive, image.imageName, image.command)
   }
 
   def buildImageForProot(image: SavedDockerImage, workDirectory: File): BuiltPRootImage =
     buildImage(analyseImage(extractImage(image, workDirectory)), workDirectory)
 
-  //FIXME use type system to encode tarred docker image
   def extractImage(savedDockerImage: SavedDockerImage, workDirectory: File): SavedDockerImage = {
     checkImageFile(savedDockerImage.file)
     if (!savedDockerImage.file.isDirectory) {
-      val (path, archiveName) = getPathAndFileName(savedDockerImage.file.getAbsolutePath)
-      if(!isAnArchive(archiveName)) throw InvalidImage(savedDockerImage.file)
+      if(!isAnArchive(savedDockerImage.file.getAbsolutePath)) throw InvalidImage(savedDockerImage.file)
       val directory = workDirectory
       workDirectory.mkdirs()
-      extractArchive(path + archiveName, directory.getAbsolutePath)
+      Tar.extract(savedDockerImage.file, directory)
       SavedDockerImage(savedDockerImage.imageName, directory, false, savedDockerImage.command)
     } else savedDockerImage
   }
@@ -61,15 +59,15 @@ object ImageBuilder {
       */
     def buildImage(preparedImage: PreparedImage, workDirectory: File): BuiltPRootImage = {
         //checkImageFile(preparedImage.file)
-        val directoryPath = workDirectory.getAbsolutePath + "/"
-        val rootfsPath = directoryPath + rootfsName + "/"
-        BFile(rootfsPath).createDirectoryIfNotExists()
+        //val directoryPath = workDirectory.getAbsolutePath + "/"
+        val rootfsPath = workDirectory.toScala / rootfsName
+        rootfsPath.createDirectoryIfNotExists()
 
         val layers = preparedImage.manifestData.Layers
         layers.foreach{
           layerName =>
-            extractArchive((preparedImage.file.toScala / layerName).pathAsString, rootfsPath)
-            removeWhiteouts(rootfsPath)
+            Tar.archive((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
+            removeWhiteouts(rootfsPath.toJava)
         }
         BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
     }

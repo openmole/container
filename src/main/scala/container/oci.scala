@@ -1,8 +1,9 @@
 package container
 
 import container.Status._
-import java.io.IOException
+import java.io.{File, IOException}
 import java.nio.file._
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 import io.circe.parser._
@@ -86,27 +87,27 @@ object OCI {
     }
     import WhiteoutUtils._
     
-    def removeWhiteouts(directoryPath: String): Status = {
-        var whiteoutsBuffer = new ListBuffer[Path]()
-    
-        Files.walk(Paths.get(directoryPath)).iterator()
-                .filter(_.getFileName.normalize().toString().startsWith(whiteoutPrefix))
-                .foreach(
-                    whiteoutPath => {
-                        whiteoutsBuffer += whiteoutPath
-                        
-                        var prefix = getPrefix(whiteoutPath)
-                        getConcernedFile(whiteoutPath, prefix) match {
-                            case Some(path) => whiteoutsBuffer += path
-                            case None       =>
-                        }
-                    }
-                )
-                
-        val whiteouts = whiteoutsBuffer.toList
-        whiteouts.foreach(path => deleteRecursively(path))
-        
-        return OK
+    def removeWhiteouts(directory: File): Status = {
+      var whiteoutsBuffer = new ListBuffer[Path]()
+
+      Files.walk(directory.toPath).iterator()
+        .filter(_.getFileName.normalize().toString().startsWith(whiteoutPrefix))
+        .foreach(
+            whiteoutPath => {
+                whiteoutsBuffer += whiteoutPath
+
+                var prefix = getPrefix(whiteoutPath)
+                getConcernedFile(whiteoutPath, prefix) match {
+                    case Some(path) => whiteoutsBuffer += path
+                    case None       =>
+                }
+            }
+        )
+
+      val whiteouts = whiteoutsBuffer.toList
+      whiteouts.foreach(path => deleteRecursively(path))
+
+      return OK
     }
     
     def getConcernedFile(whiteoutFilePath: Path, prefix: String) = {
