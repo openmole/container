@@ -1,5 +1,10 @@
+package container
+
+import container.ImageBuilder.checkImageFile
+import scala.sys.process._
+
 /*
- * Copyright (C) 2019 Pierre Peigne
+ * Copyright (C) 2019 Romain Reuillon
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -14,20 +19,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package container
+object Docker {
 
-import container.ImageBuilder.checkImageFile
+  def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") = {
+    checkImageFile(image.file)
+    val file = image.file.getAbsolutePath
+    ("docker load -i " +  file) !!
 
-import scala.sys.process._
-import java.io.File
-
-import container.proot.generatePRootScript
-
-
-object ContainerExecutor {
-
-
-
-
+    Seq(dockerCommand, "run", image.imageName) ++ command.getOrElse(image.command) !!
+  }
 
 }

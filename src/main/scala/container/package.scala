@@ -1,5 +1,7 @@
+import scala.sys.process.Process
+
 /*
- * Copyright (C) 2019 Pierre Peigne
+ * Copyright (C) 2019 Romain Reuillon
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -14,20 +16,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package container
-
-import container.ImageBuilder.checkImageFile
-
-import scala.sys.process._
-import java.io.File
-
-import container.proot.generatePRootScript
-
-
-object ContainerExecutor {
-
-
-
-
-
+package object container {
+//  def prepareEnvVariables(maybeArgs: Option[List[String]]) {
+//    maybeArgs match {
+//      case Some(args)     =>
+//        for (arg <- args)
+//        {
+//          val s = arg.split("=")
+//          if (s.length == 2) Process("bash", None, s(0) -> s(1)) !!
+//        }
+//      case _              =>
+//    }
+//  }
 }

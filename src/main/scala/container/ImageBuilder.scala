@@ -83,7 +83,7 @@ object ImageBuilder {
         val layers = preparedImage.manifestData.Layers
         layers.foreach{
           layerName =>
-            Tar.archive((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
+            Tar.extract((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
             removeWhiteouts(rootfsPath.toJava)
         }
         BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)

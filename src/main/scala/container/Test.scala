@@ -23,15 +23,17 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = DockerImage("openmole/fake")
+  val image = DockerImage("debian")
   
   File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
-//  val build = ImageBuilder.buildImageForProot(saved, File("/tmp/proot-work/").toJava)
- // ContainerExecutor.executeContainerWithPRoot(File("/tmp/proot").toJava, build, Some(Seq("/bin/ls")))
+
+  val buildProot = ImageBuilder.buildImageForProot(saved, File("/tmp/container/").toJava)
+  print(Proot.execute(File("/tmp/proot").toJava, buildProot, Some(Seq("/bin/ls", "/"))))
   
-  val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
-  print(ContainerExecutor.executeContainerWithDocker(build, Some(Seq("/bin/ls"))))
+  //val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
+  //print(ContainerExecutor.executeContainerWithDocker(build, Some(Seq("/bin/ls"))))
 
 }
