@@ -23,6 +23,7 @@ import java.io.{File, PrintWriter}
 import container.ImageBuilder.checkImageFile
 import container.OCI._
 import container.Status._
+import better.files._
 //import container.JSONUtils._
 import scala.sys.process._
 
@@ -297,7 +298,7 @@ object Proot {
     write("}\n")
   }
 
-  def preparePrintCommands(write: String => Unit) {
+  def preparePrintCommands(write: String => Unit) = {
     write("function " + printCommandsFuncName + " {")
     write("\techo 'Commands:'")
     write("\techo '\tinfo <arg1>'")
@@ -313,7 +314,6 @@ object Proot {
     write("\techo '\t\t<args...>: \targuments for the image program'")
     write("}\n")
   }
-
 
   def assembleCommandParts(args:String*) = {
     var command = ""
@@ -340,10 +340,18 @@ object Proot {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
-    val rootFSPath = path + "rootfs/"
+    val rootFSPath = path + rootfsName
 
     generatePRootScript(path, image.configurationData)
 
     (Seq(path + "launcher.sh", "run", proot.getAbsolutePath, rootFSPath) ++ command.getOrElse(image.command)).!!
   }
+
+  def buildImage(image: SavedDockerImage, workDirectory: File): BuiltPRootImage = {
+    val rooFSPath = workDirectory.toScala / rootfsName
+    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, rooFSPath.toJava))
+    ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)
+    BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
+  }
+
 }

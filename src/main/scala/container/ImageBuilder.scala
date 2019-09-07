@@ -37,9 +37,6 @@ object ImageBuilder {
     BuiltDockerImage(archive, image.imageName, image.command)
   }
 
-  def buildImageForProot(image: SavedDockerImage, workDirectory: File): BuiltPRootImage =
-    buildImage(analyseImage(extractImage(image, workDirectory)), workDirectory)
-
   def extractImage(savedDockerImage: SavedDockerImage, workDirectory: File): SavedDockerImage = {
     checkImageFile(savedDockerImage.file)
     if (!savedDockerImage.file.isDirectory) {
@@ -55,7 +52,7 @@ object ImageBuilder {
       * from the manifest and configuration files.
       * Return a PreparedImage with Manifest an Config data
       */
-    def analyseImage(savedDockerImage: SavedDockerImage): PreparedImage = {
+    def prepareImage(savedDockerImage: SavedDockerImage): PreparedImage = {
         checkImageFile(savedDockerImage.file)
         val filePath = savedDockerImage.file.getAbsolutePath + "/"
         val manifestContent = BFile(filePath + "manifest.json").contentAsString
@@ -74,20 +71,33 @@ object ImageBuilder {
       * Also, delete the whiteout files.
       * Return a BuiltImage
       */
-    def buildImage(preparedImage: PreparedImage, workDirectory: File): BuiltPRootImage = {
-        //checkImageFile(preparedImage.file)
-        //val directoryPath = workDirectory.getAbsolutePath + "/"
-        val rootfsPath = workDirectory.toScala / rootfsName
-        rootfsPath.createDirectoryIfNotExists()
+    def buildImage(preparedImage: PreparedImage, rootfs: File): Unit = {
+      //checkImageFile(preparedImage.file)
+      //val directoryPath = workDirectory.getAbsolutePath + "/"
+      rootfs.toScala.createDirectoryIfNotExists()
 
-        val layers = preparedImage.manifestData.Layers
-        layers.foreach{
-          layerName =>
-            Tar.extract((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
-            removeWhiteouts(rootfsPath.toJava)
-        }
-        BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
+
+      extractLayers(preparedImage, rootfs)
+//      val layers = preparedImage.manifestData.Layers
+//
+//      layers.foreach{
+//        layerName =>
+//          Tar.extract((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
+//          removeWhiteouts(rootfsPath.toJava)
+//      }
     }
+
+  def extractLayers(preparedImage: PreparedImage, destination: File) = {
+    destination.toScala.createDirectoryIfNotExists()
+
+    val layers = preparedImage.manifestData.Layers
+
+    layers.foreach{
+      layerName =>
+        Tar.extract((preparedImage.file.toScala / layerName).toJava, destination)
+        removeWhiteouts(destination)
+    }
+  }
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
 }

@@ -63,52 +63,48 @@ object NetworkService {
 }
 
 class NetworkService(val httpProxy: Option[HttpHost])
-// ----------
 
-
-//
 case class Err(msg: String) {
   def +(o: Err) = Err(msg + o.msg)
 }
-//
-
-//
-sealed trait ContainerImage
 
 case class DockerImage(imageName: String,
                        tag: String = "latest",
                        registry: String = "https://registry-1.docker.io",
-                       command: Seq[String] = Seq()) extends ContainerImage
+                       command: Seq[String] = Seq())
 
 case class SavedDockerImage(imageName: String,
                              file: File,
                             compressed: Boolean = false,
-                            command: Seq[String] = Seq()) extends ContainerImage
+                            command: Seq[String] = Seq())
 
 case class PreparedImage(file: File,
                          manifestData: ManifestData,
                          configurationData: ConfigurationData,
-                         command: Seq[String] = Seq()) extends ContainerImage
+                         command: Seq[String] = Seq())
 
 case class BuiltPRootImage(file: File,
                            configurationData: ConfigurationData,
-                           command: Seq[String] = Seq()) extends ContainerImage
+                           command: Seq[String] = Seq())
 
 case class BuiltDockerImage(file: File,
                             imageName: String,
                          //   configurationData: ConfigurationData,
-                            command: Seq[String] = Seq()) extends ContainerImage
+                            command: Seq[String] = Seq())
+
+case class BuiltCharlieCloudImage(file: File,
+                           configurationData: ConfigurationData,
+                           command: Seq[String] = Seq())
+
 
 object Stream {
   def copy(inputStream: InputStream, outputStream: OutputStream) = {
     val DefaultBufferSize = 16 * 1024
     val buffer = new Array[Byte](DefaultBufferSize)
-    Iterator.continually(inputStream.read(buffer)).takeWhile(_ != -1).foreach {
-      outputStream.write(buffer, 0, _)
-    }
+    Iterator.continually(inputStream.read(buffer)).takeWhile(_ != -1).foreach { outputStream.write(buffer, 0, _) }
   }
 }
-//
+
 
 
 
