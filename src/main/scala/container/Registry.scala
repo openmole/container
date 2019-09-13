@@ -89,7 +89,7 @@ case class BuiltPRootImage(file: File,
 
 case class BuiltDockerImage(file: File,
                             imageName: String,
-                         //   configurationData: ConfigurationData,
+                            //   configurationData: ConfigurationData,
                             command: Seq[String] = Seq())
 
 case class BuiltCharlieCloudImage(file: File,

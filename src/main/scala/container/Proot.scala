@@ -210,8 +210,10 @@ object Proot {
     ), standardVarsFuncName, writeln)
 
     prepareEnvVariables(config.Env, envFuncName, writeln)
+
     prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
     prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
+
     preparePRootCommand(writeln)
     preparePrintCommands(writeln)
     prepareCLI(writeln)

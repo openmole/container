@@ -29,13 +29,6 @@ object ImageBuilder {
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
   val rootfsName = "rootfs"
 
-  def buildImageForDocker(image: SavedDockerImage, archive: File): BuiltDockerImage = {
-    if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
-    //val path = image.file.toScala.pathAsString
-    //BFile(path + "/manifest.json").delete()
-    Tar.archive(image.file, archive)
-    BuiltDockerImage(archive, image.imageName, image.command)
-  }
 
   def extractImage(savedDockerImage: SavedDockerImage, workDirectory: File): SavedDockerImage = {
     checkImageFile(savedDockerImage.file)

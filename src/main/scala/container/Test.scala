@@ -23,8 +23,8 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = DockerImage("debian")
-  
+  val image = DockerImage("alpine")
+
   File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
@@ -33,11 +33,12 @@ object Test extends App {
   //val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
   //print(Proot.execute(File("/tmp/proot").toJava, buildProot, Some(Seq("/bin/ls", "/"))))
 
-  val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
-  print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
+  //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
+  //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
 
 
-  //val build = ImageBuilder.buildImageForDocker(saved, new java.io.File("/tmp/fake.tar"))
-  //print(ContainerExecutor.executeContainerWithDocker(build, Some(Seq("/bin/ls"))))
+  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
+  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
+  finally Docker.clean(build)
 
 }

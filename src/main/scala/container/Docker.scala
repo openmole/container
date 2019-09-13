@@ -1,6 +1,10 @@
 package container
 
+import java.io.File
+import java.util.UUID
+
 import container.ImageBuilder.checkImageFile
+
 import scala.sys.process._
 
 /*
@@ -21,12 +25,30 @@ import scala.sys.process._
  */
 object Docker {
 
-  def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") = {
+  def build(image: SavedDockerImage, archive: File, dockerCommand: String = "docker"): BuiltDockerImage = {
+    if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
+    //val path = image.file.toScala.pathAsString
+    //BFile(path + "/manifest.json").delete()
+    Tar.archive(image.file, archive)
     checkImageFile(image.file)
-    val file = image.file.getAbsolutePath
-    ("docker load -i " +  file) !!
 
-    Seq(dockerCommand, "run", image.imageName) ++ command.getOrElse(image.command) !!
+    val imageName = UUID.randomUUID().toString
+
+    val file = archive.getAbsolutePath
+    (s"$dockerCommand load -i $file").!!
+    (s"$dockerCommand tag ${image.imageName} $imageName").!!
+
+    BuiltDockerImage(archive, imageName, image.command)
   }
+
+
+  def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
+    Seq(dockerCommand, "run", "--name", image.imageName, image.imageName) ++ command.getOrElse(image.command) !!
+
+  def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
+    (s"$dockerCommand rm ${image.imageName}").!!
+    (s"$dockerCommand rmi ${image.imageName}").!!
+  }
+
 
 }
