@@ -18,10 +18,18 @@ package container
  */
 
 import java.io.File
+
+import better.files._
+
 import scala.sys.process._
 import container.ImageBuilder.checkImageFile
+import container.OCI.ConfigurationData
 
 object CharlieCloud {
+
+  case class BuiltCharlieCloudImage(file: File,
+                                    configurationData: ConfigurationData,
+                                    command: Seq[String] = Seq())
 
   def execute(chRun: File, image: BuiltCharlieCloudImage, command: Option[Seq[String]] = None) = {
     checkImageFile(image.file)
@@ -29,10 +37,14 @@ object CharlieCloud {
     Seq(chRun.getPath, file) ++ command.getOrElse(image.command) !!
   }
 
-  def buildImage(image: SavedDockerImage, workDirectory: File): BuiltCharlieCloudImage = {
+  def buildImage(image: SavedImage, workDirectory: File): BuiltCharlieCloudImage = {
     val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, workDirectory))
     ImageBuilder.buildImage(preparedImage, workDirectory)
     BuiltCharlieCloudImage(workDirectory, preparedImage.configurationData, preparedImage.command)
+  }
+
+  def clean(image: BuiltCharlieCloudImage): Unit = {
+    image.file.toScala.delete()
   }
 
 

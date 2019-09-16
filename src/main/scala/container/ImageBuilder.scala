@@ -30,14 +30,14 @@ object ImageBuilder {
   val rootfsName = "rootfs"
 
 
-  def extractImage(savedDockerImage: SavedDockerImage, workDirectory: File): SavedDockerImage = {
+  def extractImage(savedDockerImage: SavedImage, workDirectory: File): SavedImage = {
     checkImageFile(savedDockerImage.file)
     if (!savedDockerImage.file.isDirectory) {
       if(!isAnArchive(savedDockerImage.file.getAbsolutePath)) throw InvalidImage(savedDockerImage.file)
       val directory = workDirectory
       workDirectory.mkdirs()
       Tar.extract(savedDockerImage.file, directory)
-      SavedDockerImage(savedDockerImage.imageName, directory, false, savedDockerImage.command)
+      SavedImage(savedDockerImage.imageName, directory, false, savedDockerImage.command)
     } else savedDockerImage
   }
     
@@ -45,7 +45,7 @@ object ImageBuilder {
       * from the manifest and configuration files.
       * Return a PreparedImage with Manifest an Config data
       */
-    def prepareImage(savedDockerImage: SavedDockerImage): PreparedImage = {
+    def prepareImage(savedDockerImage: SavedImage): PreparedImage = {
         checkImageFile(savedDockerImage.file)
         val filePath = savedDockerImage.file.getAbsolutePath + "/"
         val manifestContent = BFile(filePath + "manifest.json").contentAsString

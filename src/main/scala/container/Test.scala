@@ -23,9 +23,9 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = DockerImage("alpine")
+  val image = RegistryImage("alpine")
 
-  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
@@ -38,7 +38,7 @@ object Test extends App {
 
 
   val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
-  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
-  finally Docker.clean(build)
+   print(Docker.execute(build, Some(Seq("/bin/ls"))))
+  //finally Docker.clean(build)
 
 }

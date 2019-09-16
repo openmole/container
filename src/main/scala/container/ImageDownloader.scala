@@ -39,15 +39,15 @@ object ImageDownloader {
                     parent: String,
                     created: String,
                     containerConfig: ContainerConf)
-  case class ImageNotFound(image: DockerImage) extends Exception
+  case class ImageNotFound(image: RegistryImage) extends Exception
 
-  def downloadImageWithDocker(dockerImage: DockerImage): SavedDockerImage = {
+  def downloadImageWithDocker(dockerImage: RegistryImage): SavedImage = {
     val name = dockerImage.imageName + ":" + dockerImage.tag
     val fileName = dockerImage.imageName + ".tar"
     ("docker pull " + name).!!
     val file = BFile(fileName).createFileIfNotExists()
     ("docker save -o " + fileName + " " + name).!!
-    SavedDockerImage(dockerImage.imageName, file.toJava, command = dockerImage.command)
+    SavedImage(dockerImage.imageName, file.toJava, command = dockerImage.command)
   }
 
   def getManifestAsString(layersHash: List[String], name: String, tag: String, configName: String): String = {
@@ -89,9 +89,16 @@ object ImageDownloader {
 
   ///////////////////
   // FIXME shouldn't this be closer to https://github.com/openmole/openmole/blob/44dd78575ab7b5e040a3afa0c8b20ba0c9feeba1/openmole/plugins/org.openmole.plugin.task.udocker/src/main/scala/org/openmole/plugin/task/udocker/UDocker.scala#L52 ?
-  def downloadContainerImage(dockerImage: DockerImage, path: File, timeout: Time): SavedDockerImage = {
-    val imagePath = path.getAbsolutePath + "/" + dockerImage.imageName
-    val dir = BFile(imagePath).createDirectoryIfNotExists()
+  def downloadContainerImage(dockerImage: RegistryImage, localRepository: File, timeout: Time): SavedImage = {
+    import better.files._
+
+    val tmpDirectory = localRepository.toScala / ".tmp"
+    val imageDirectory = localRepository.toScala /  dockerImage.imageName
+    val idsDirectory = localRepository.toScala / "id"
+
+    tmpDirectory.createDirectoryIfNotExists()
+    imageDirectory.createDirectoryIfNotExists()
+    idsDirectory.createDirectoryIfNotExists()
 
     // SEE WHAT TO DO WITH THIS-------//
     val opt: Option[HttpHost] = None //
@@ -100,62 +107,78 @@ object ImageDownloader {
 
     manifest(dockerImage, downloadManifest(dockerImage, timeout)(net)) match {
       case Right(manifestValue) =>
-          var conf = manifestValue.value.history.get
+        val conf = manifestValue.value.history.get
 
-          val layersIDS = {
-            val raw = conf.map(_.v1Compatibility)
-            raw.map { x =>
-              val parsed = parse(x).getOrElse(Json.Null)
-              val cursor: HCursor = parsed.hcursor
+        val layersIDS = {
+          val raw = conf.map(_.v1Compatibility)
 
-              val ignore =
-                cursor.get[Boolean]("throwaway") match {
-                  case Right(value) => value
-                  case Left(error) => false
-                }
+          raw.map { x =>
+            val parsed = parse(x).getOrElse(Json.Null)
+            val cursor: HCursor = parsed.hcursor
+            val ignore =
+              cursor.get[Boolean]("throwaway") match {
+                case Right(value) => value
+                case Left(error) => false
+              }
 
               cursor.get[String]("id") match {
                 case Right(id) => id -> ignore
                 case Left(error) => throw error
               }
-            }
           }
+        }
 
-          val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
-          val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
+        val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
+        val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
 
-          for {
-            (hash, (id, ignore)) <- layersHash zip layersIDS
-          } if(!ignore) {
-            val dirName = UUID.randomUUID().toString
-            val layerDir = dir / dirName
-            layerDir.createDirectories()
+        val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
-            BFile(layerDir.pathAsString + "/VERSION").appendLine("1.0")
+        for {
+          ((hash, (id, ignore)), v1compat) <- layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig
+        } {
+          val idFile = idsDirectory / id
+          if(!ignore) {
+            if(!idFile.exists) {
+              //              if(!layerPath.exists) {
+              val dirName = UUID.randomUUID().toString
+              val tmpLayerDir = tmpDirectory / dirName
 
-            blob(dockerImage, Layer(hash), BFile(layerDir.pathAsString + "/" + "layer.tar"), timeout)(net)
-            val layerHash = Hash.sha256(BFile(layerDir.pathAsString + "/" + "layer.tar").toJava)
+              tmpLayerDir.createDirectories()
 
-            layersHashMap.put(hash, Some(layerHash))
+              (tmpLayerDir / "VERSION").appendLine("1.0")
 
-            if (!BFile(layerDir.pathAsString + "/json").exists && conf.nonEmpty) {
-              BFile(layerDir.pathAsString + "/json").appendLine(conf.head.v1Compatibility)
-              conf = conf.tail
-            }
+              blob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
+              val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-            layerDir moveTo (dir / layerHash)
+              layersHashMap.put(hash, Some(layerHash))
+
+              if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
+                (tmpLayerDir / "json").appendLine(v1compat.get)
+              }
+
+              val layerPath = imageDirectory / layerHash
+              tmpLayerDir moveTo layerPath
+              idFile.createFile
+              idFile write layerHash
+              //              } else {
+              //                val layerHash = Hash.sha256(layerPath / "layer.tar" toJava)
+              //                layersHashMap.put(hash, Some(layerHash))
+              //              }
+            } else layersHashMap.put(hash, Some(idFile.contentAsString))
           } else layersHashMap.put(hash, None)
+        }
 
-          val configString = getConfigAsString(manifestValue, layersHashMap.toMap)
-          val configName = Hash.sha256(configString) + ".json"
-          BFile(dir.pathAsString + s"/$configName").appendLine(configString)
+        val configString = getConfigAsString(manifestValue, layersHashMap.toMap)
 
-          val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
-          BFile(dir.pathAsString + "/manifest.json").appendLine(manifestString)
+          // should it be written each time
+        val configName = Hash.sha256(configString) + ".json"
+        (imageDirectory / configName) write configString
 
+        val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
+        (imageDirectory / "manifest.json") write manifestString
 
-          SavedDockerImage(dockerImage.imageName, dir.toJava)
-        case _ => throw ImageNotFound(dockerImage)
-      }
+        SavedImage(dockerImage.imageName, imageDirectory.toJava)
+      case _ => throw ImageNotFound(dockerImage)
     }
   }
+}

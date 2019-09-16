@@ -68,33 +68,23 @@ case class Err(msg: String) {
   def +(o: Err) = Err(msg + o.msg)
 }
 
-case class DockerImage(imageName: String,
-                       tag: String = "latest",
-                       registry: String = "https://registry-1.docker.io",
-                       command: Seq[String] = Seq())
+case class RegistryImage(
+  imageName: String,
+  tag: String = "latest",
+  registry: String = "https://registry-1.docker.io",
+  command: Seq[String] = Seq())
 
-case class SavedDockerImage(imageName: String,
-                             file: File,
-                            compressed: Boolean = false,
-                            command: Seq[String] = Seq())
+case class SavedImage(
+  imageName: String,
+  file: File,
+  compressed: Boolean = false,
+  command: Seq[String] = Seq())
 
-case class PreparedImage(file: File,
-                         manifestData: ManifestData,
-                         configurationData: ConfigurationData,
-                         command: Seq[String] = Seq())
-
-case class BuiltPRootImage(file: File,
-                           configurationData: ConfigurationData,
-                           command: Seq[String] = Seq())
-
-case class BuiltDockerImage(file: File,
-                            imageName: String,
-                            //   configurationData: ConfigurationData,
-                            command: Seq[String] = Seq())
-
-case class BuiltCharlieCloudImage(file: File,
-                           configurationData: ConfigurationData,
-                           command: Seq[String] = Seq())
+case class PreparedImage(
+  file: File,
+  manifestData: ManifestData,
+  configurationData: ConfigurationData,
+  command: Seq[String] = Seq())
 
 
 object Stream {
@@ -126,6 +116,7 @@ object Registry {
     scala.io.Source.fromInputStream(response.getEntity.getContent).mkString
 
   object HTTP {
+
     def redirectStrategy(preventGetHeaderForward: Boolean) = new LaxRedirectStrategy() {
       override def getRedirect(request: HttpRequest, response: HttpResponse, context: HttpContext): HttpUriRequest = {
         val uri = this.getLocationURI(request, response, context)
@@ -181,7 +172,7 @@ object Registry {
   sealed trait LayerElement
   final case class Layer(digest: String) extends LayerElement
   final case class LayerConfig(digest: String) extends LayerElement
-  case class Manifest(value: ImageManifestV2Schema1, image: DockerImage)
+  case class Manifest(value: ImageManifestV2Schema1, image: RegistryImage)
 
   object Token {
 
@@ -236,12 +227,12 @@ object Registry {
 
   }
 
-  def baseURL(image: DockerImage): String = {
+  def baseURL(image: RegistryImage): String = {
     val path = if (image.imageName.contains("/")) image.imageName else s"library/${image.imageName}"
     s"${image.registry}/v2/$path"
   }
 
-  def downloadManifest(image: DockerImage, timeout: Time)(implicit networkService: NetworkService): String = {
+  def downloadManifest(image: RegistryImage, timeout: Time)(implicit networkService: NetworkService): String = {
     val url = s"${baseURL(image)}/manifests/${image.tag}"
     val httpResponse = client(preventGetHeaderForward = true).execute(Token.withToken(url, timeout))
 
@@ -250,7 +241,7 @@ object Registry {
     content(httpResponse)
   }
 
-  def manifest(image: DockerImage, manifestContent: String): Either[Err, Manifest] = {
+  def manifest(image: RegistryImage, manifestContent: String): Either[Err, Manifest] = {
     val manifestsE = decode[ImageManifestV2Schema1](manifestContent)
     val manifest = for {
       manifest ← manifestsE
@@ -263,7 +254,7 @@ object Registry {
     fsLayer ← fsLayers
   } yield Layer(fsLayer.blobSum)
 
-  def blob(image: DockerImage, layer: Layer, file: BFile, timeout: Time)(implicit networkservice: NetworkService): Unit = {
+  def blob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time)(implicit networkservice: NetworkService): Unit = {
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""
     execute(Token.withToken(url, timeout), preventGetHeaderForward = true) { response ⇒
       val os = file.newOutputStream

@@ -29,6 +29,10 @@ import scala.sys.process._
 
 object Proot {
 
+  case class BuiltPRootImage(file: File,
+                             configurationData: ConfigurationData,
+                             command: Seq[String] = Seq())
+
   val rootfsName = "rootfs"
   val scriptName = "launcher.sh"
 
@@ -349,7 +353,7 @@ object Proot {
     (Seq(path + "launcher.sh", "run", proot.getAbsolutePath, rootFSPath) ++ command.getOrElse(image.command)).!!
   }
 
-  def buildImage(image: SavedDockerImage, workDirectory: File): BuiltPRootImage = {
+  def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
     val rooFSPath = workDirectory.toScala / rootfsName
     val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, rooFSPath.toJava))
     ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)

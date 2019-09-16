@@ -25,7 +25,12 @@ import scala.sys.process._
  */
 object Docker {
 
-  def build(image: SavedDockerImage, archive: File, dockerCommand: String = "docker"): BuiltDockerImage = {
+  case class BuiltDockerImage(file: File,
+                              imageName: String,
+                              //   configurationData: ConfigurationData,
+                              command: Seq[String] = Seq())
+
+  def build(image: SavedImage, archive: File, dockerCommand: String = "docker"): BuiltDockerImage = {
     if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
     //val path = image.file.toScala.pathAsString
     //BFile(path + "/manifest.json").delete()
@@ -35,6 +40,7 @@ object Docker {
     val imageName = UUID.randomUUID().toString
 
     val file = archive.getAbsolutePath
+
     (s"$dockerCommand load -i $file").!!
     (s"$dockerCommand tag ${image.imageName} $imageName").!!
 
@@ -48,6 +54,7 @@ object Docker {
   def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
     (s"$dockerCommand rm ${image.imageName}").!!
     (s"$dockerCommand rmi ${image.imageName}").!!
+    image.file.delete()
   }
 
 
