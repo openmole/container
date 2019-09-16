@@ -37,8 +37,13 @@ object Test extends App {
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
 
 
-  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
-   print(Docker.execute(build, Some(Seq("/bin/ls"))))
-  //finally Docker.clean(build)
+//  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
+//  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
+//  finally Docker.clean(build)
+
+    val build = Singularity.build(saved, new java.io.File("/tmp/fake.simg"))
+    print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
+    //finally Docker.clean(build)
+
 
 }
