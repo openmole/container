@@ -29,7 +29,8 @@ import org.apache.http.HttpHost
 import squants.time._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object ImageDownloader {
@@ -85,7 +86,7 @@ object ImageDownloader {
     def apply[T](f: => T): Future[T]
   }
 
-  def downloadContainerImage(dockerImage: RegistryImage, localRepository: File, timeout: Time): SavedImage = {
+  def downloadContainerImage(dockerImage: RegistryImage, localRepository: File, timeout: Time, executor: Executor = Executor.sequential): SavedImage = {
     import better.files._
 
     val tmpDirectory = localRepository.toScala / ".tmp"
@@ -125,13 +126,11 @@ object ImageDownloader {
         }
 
         val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
-        //val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
-
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
         val layersMap = for {
           ((hash, (id, ignore)), v1compat) <- layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig
-        } yield {
+        } yield executor {
           val idFile = idsDirectory / id
           if(!ignore) {
             if(!idFile.exists) {
@@ -145,8 +144,6 @@ object ImageDownloader {
               downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
               val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-              //layersHashMap.put(hash, Some(layerHash))
-
               if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
                 (tmpLayerDir / "json").appendLine(v1compat.get)
               }
@@ -157,11 +154,11 @@ object ImageDownloader {
               idFile write layerHash
 
               hash -> Some(layerHash)
-            } else hash -> Some(idFile.contentAsString) // layersHashMap.put(hash, Some(idFile.contentAsString))
-          } else hash -> None //layersHashMap.put(hash, None)
+            } else hash -> Some(idFile.contentAsString)
+          } else hash -> None
         }
 
-        val layersHashMap = layersMap.toMap
+        val layersHashMap = layersMap.map(Await.result(_, Duration.Inf)).toMap
         val configString = getConfigAsString(manifestValue, layersHashMap)
 
           // should it be written each time
