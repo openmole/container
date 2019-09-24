@@ -85,10 +85,6 @@ object ImageDownloader {
     def apply[T](f: => T): Future[T]
   }
 
-//  () => T => Future[T]
-
-  ///////////////////
-  // FIXME shouldn't this be closer to https://github.com/openmole/openmole/blob/44dd78575ab7b5e040a3afa0c8b20ba0c9feeba1/openmole/plugins/org.openmole.plugin.task.udocker/src/main/scala/org/openmole/plugin/task/udocker/UDocker.scala#L52 ?
   def downloadContainerImage(dockerImage: RegistryImage, localRepository: File, timeout: Time): SavedImage = {
     import better.files._
 
@@ -129,17 +125,16 @@ object ImageDownloader {
         }
 
         val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
-        val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
+        //val layersHashMap = collection.mutable.HashMap[String, Option[String]]()
 
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
-        for {
+        val layersMap = for {
           ((hash, (id, ignore)), v1compat) <- layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig
-        } {
+        } yield {
           val idFile = idsDirectory / id
           if(!ignore) {
             if(!idFile.exists) {
-              //              if(!layerPath.exists) {
               val dirName = UUID.randomUUID().toString
               val tmpLayerDir = tmpDirectory / dirName
 
@@ -147,10 +142,10 @@ object ImageDownloader {
 
               (tmpLayerDir / "VERSION").appendLine("1.0")
 
-              blob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
+              downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
               val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-              layersHashMap.put(hash, Some(layerHash))
+              //layersHashMap.put(hash, Some(layerHash))
 
               if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
                 (tmpLayerDir / "json").appendLine(v1compat.get)
@@ -160,15 +155,14 @@ object ImageDownloader {
               tmpLayerDir moveTo layerPath
               idFile.createFile
               idFile write layerHash
-              //              } else {
-              //                val layerHash = Hash.sha256(layerPath / "layer.tar" toJava)
-              //                layersHashMap.put(hash, Some(layerHash))
-              //              }
-            } else layersHashMap.put(hash, Some(idFile.contentAsString))
-          } else layersHashMap.put(hash, None)
+
+              hash -> Some(layerHash)
+            } else hash -> Some(idFile.contentAsString) // layersHashMap.put(hash, Some(idFile.contentAsString))
+          } else hash -> None //layersHashMap.put(hash, None)
         }
 
-        val configString = getConfigAsString(manifestValue, layersHashMap.toMap)
+        val layersHashMap = layersMap.toMap
+        val configString = getConfigAsString(manifestValue, layersHashMap)
 
           // should it be written each time
         val configName = Hash.sha256(configString) + ".json"

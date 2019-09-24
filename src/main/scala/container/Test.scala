@@ -25,13 +25,13 @@ object Test extends App {
 
   val image = RegistryImage("alpine")
 
-  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
 
-  //val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
-  //print(Proot.execute(File("/tmp/proot").toJava, buildProot, Some(Seq("/bin/ls", "/"))))
+  val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
+  print(Proot.execute(File("/tmp/proot").toJava, buildProot, Some(Seq("/bin/ls", "/"))))
 
   //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
@@ -41,8 +41,8 @@ object Test extends App {
 //  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
 //  finally Docker.clean(build)
 
-    val build = Singularity.build(saved, new java.io.File("/tmp/fake.simg"))
-    print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
+    //val build = Singularity.build(saved, new java.io.File("/tmp/fake.simg"))
+    //print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
     //finally Docker.clean(build)
 
 

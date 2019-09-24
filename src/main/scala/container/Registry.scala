@@ -254,7 +254,7 @@ object Registry {
     fsLayer ← fsLayers
   } yield Layer(fsLayer.blobSum)
 
-  def blob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time)(implicit networkservice: NetworkService): Unit = {
+  def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time)(implicit networkservice: NetworkService): Unit = {
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""
     execute(Token.withToken(url, timeout), preventGetHeaderForward = true) { response ⇒
       val os = file.newOutputStream

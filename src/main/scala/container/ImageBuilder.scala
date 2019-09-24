@@ -49,7 +49,7 @@ object ImageBuilder {
         checkImageFile(savedDockerImage.file)
         val filePath = savedDockerImage.file.getAbsolutePath + "/"
         val manifestContent = BFile(filePath + "manifest.json").contentAsString
-        val manifestData: ManifestData = harvestManifestData(manifestContent.substring(0, manifestContent.length -1))
+        val manifestData: ManifestData = harvestManifestData(manifestContent)
         val configurationData: ConfigurationData = manifestData.Config match {
           case Some(conf) => {
             val configContent = BFile(filePath + conf).contentAsString
