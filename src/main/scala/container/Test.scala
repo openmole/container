@@ -23,15 +23,16 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = RegistryImage("alpine")
+  val image = RegistryImage("debian")
 
   File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
-  val saved = ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes)
+  val saved =
+    ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes, executor =  ImageDownloader.Executor.parallel)
 
   val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
-  print(Proot.execute(File("/tmp/proot").toJava, buildProot, Some(Seq("/bin/ls", "/"))))
+  print(Proot.execute(buildProot, Some(Seq("/bin/ls", "/"))))
 
   //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))

@@ -18,7 +18,7 @@ package container
 
 import java.io.File
 import java.util.UUID
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
 
 import better.files.{File => BFile}
 import container.DockerMetadata._
@@ -30,7 +30,7 @@ import squants.time._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.sys.process._
 
 object ImageDownloader {
@@ -77,8 +77,17 @@ object ImageDownloader {
       }
     }
 
-     def parallel(implicit executorService: ExecutorService) = new Executor {
-      override def apply[T](f: => T): Future[T] = Future(f)
+    private val daemonFactory = new ThreadFactory {
+      override def newThread(r: Runnable): Thread = {
+        val t = new Thread(r)
+        t.setDaemon(true)
+        t
+      }
+    }
+
+    def parallel(implicit executorService: ExecutorService = Executors.newFixedThreadPool(10, daemonFactory)) = new Executor {
+      override def apply[T](f: => T): Future[T] =
+        Future { f } (ExecutionContext.fromExecutorService(executorService))
     }
   }
 
@@ -86,12 +95,16 @@ object ImageDownloader {
     def apply[T](f: => T): Future[T]
   }
 
-  def downloadContainerImage(dockerImage: RegistryImage, localRepository: File, timeout: Time, executor: Executor = Executor.sequential): SavedImage = {
+  def downloadContainerImage(
+    dockerImage: RegistryImage,
+    localRepository: File,
+    timeout: Time,
+    executor: Executor = Executor.sequential): SavedImage = {
     import better.files._
 
     val tmpDirectory = localRepository.toScala / ".tmp"
     val imageDirectory = localRepository.toScala /  dockerImage.imageName
-    val idsDirectory = localRepository.toScala / "id"
+    val idsDirectory = imageDirectory / "id"
 
     tmpDirectory.createDirectoryIfNotExists()
     imageDirectory.createDirectoryIfNotExists()
@@ -128,37 +141,46 @@ object ImageDownloader {
         val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
-        val layersMap = for {
-          ((hash, (id, ignore)), v1compat) <- layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig
-        } yield executor {
-          val idFile = idsDirectory / id
-          if(!ignore) {
-            if(!idFile.exists) {
-              val dirName = UUID.randomUUID().toString
-              val tmpLayerDir = tmpDirectory / dirName
+        val layersMap =
+          for {
+            ((hash, (id, ignore)), v1compat) <- (layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig)
+          } yield executor {
+            val idFile = idsDirectory / id
+            if(!ignore) {
+              if(!idFile.exists) {
+                val dirName = UUID.randomUUID().toString
+                val tmpLayerDir = tmpDirectory / dirName
 
-              tmpLayerDir.createDirectories()
+                tmpLayerDir.createDirectories()
 
-              (tmpLayerDir / "VERSION").appendLine("1.0")
+                (tmpLayerDir / "VERSION").appendLine("1.0")
 
-              downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
-              val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
+                downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
 
-              if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
-                (tmpLayerDir / "json").appendLine(v1compat.get)
-              }
+                val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-              val layerPath = imageDirectory / layerHash
-              tmpLayerDir moveTo layerPath
-              idFile.createFile
-              idFile write layerHash
+                if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
+                  (tmpLayerDir / "json").appendLine(v1compat.get)
+                }
 
-              hash -> Some(layerHash)
-            } else hash -> Some(idFile.contentAsString)
-          } else hash -> None
-        }
+                lock.withLockInDirectory(idsDirectory.toJava) {
+                  if (!idFile.exists) {
+                    val layerPath = imageDirectory / layerHash
+                    tmpLayerDir moveTo layerPath
+                    idFile.createFile
+                    idFile write layerHash
+                    hash -> Some(layerHash)
+                  } else {
+                    tmpLayerDir.delete()
+                    hash -> Some(idFile.contentAsString)
+                  }
+                }
 
-        val layersHashMap = layersMap.map(Await.result(_, Duration.Inf)).toMap
+              } else hash -> Some(idFile.contentAsString)
+            } else hash -> None
+          }
+
+        val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
         val configString = getConfigAsString(manifestValue, layersHashMap)
 
           // should it be written each time

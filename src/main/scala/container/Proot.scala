@@ -342,7 +342,7 @@ object Proot {
     }
   }
 
-  def execute(proot: File, image: BuiltPRootImage, command: Option[Seq[String]] = None) = {
+  def execute(image: BuiltPRootImage, command: Option[Seq[String]] = None, proot: String = "proot") = {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
@@ -350,7 +350,7 @@ object Proot {
 
     generatePRootScript(path, image.configurationData)
 
-    (Seq(path + "launcher.sh", "run", proot.getAbsolutePath, rootFSPath) ++ command.getOrElse(image.command)).!!
+    (Seq(path + "launcher.sh", "run", proot, rootFSPath) ++ command.getOrElse(image.command)).!!
   }
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
