@@ -99,7 +99,8 @@ object ImageDownloader {
     dockerImage: RegistryImage,
     localRepository: File,
     timeout: Time,
-    executor: Executor = Executor.sequential): SavedImage = {
+    executor: Executor = Executor.sequential,
+    proxy: Option[HttpHost] = None): SavedImage = {
     import better.files._
 
     val tmpDirectory = localRepository.toScala / ".tmp"
@@ -110,12 +111,7 @@ object ImageDownloader {
     imageDirectory.createDirectoryIfNotExists()
     idsDirectory.createDirectoryIfNotExists()
 
-    // SEE WHAT TO DO WITH THIS-------//
-    val opt: Option[HttpHost] = None //
-    val net = new NetworkService(opt) //
-    //--------------------------------//
-
-    manifest(dockerImage, downloadManifest(dockerImage, timeout)(net)) match {
+    manifest(dockerImage, downloadManifest(dockerImage, timeout, proxy = proxy)) match {
       case Right(manifestValue) =>
         val conf = manifestValue.value.history.get
 
@@ -155,7 +151,7 @@ object ImageDownloader {
 
                 (tmpLayerDir / "VERSION").appendLine("1.0")
 
-                downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout)(net)
+                downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy)
 
                 val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 

@@ -95,14 +95,6 @@ object Stream {
   }
 }
 
-
-
-
-
-
-
-// RAW IMPORTS
-
 object Registry {
 
   // ...
@@ -149,14 +141,14 @@ object Registry {
     def httpProxyAsHost(implicit networkService: NetworkService): Option[HttpHost] =
       networkService.httpProxy.map { host ⇒ HttpHost.create(NetworkService.HttpHost.toString(host)) }
 */
-    def client(preventGetHeaderForward: Boolean = false)(implicit networkService: NetworkService) =
-      networkService.httpProxy match {
-      case Some(httpHost: HttpHost) ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).setProxy(httpHost).build()
-      case _                        ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).build()
-    }
+    def client(proxy: Option[HttpHost], preventGetHeaderForward: Boolean = false) =
+      proxy match {
+        case Some(httpHost: HttpHost) ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).setProxy(httpHost).build()
+        case _                        ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).build()
+      }
 
-    def execute[T](get: HttpGet, checkError: Boolean = true, preventGetHeaderForward: Boolean = false)(f: HttpResponse ⇒ T)(implicit networkService: NetworkService) = {
-      val response = client(preventGetHeaderForward = preventGetHeaderForward)(networkService).execute(get)
+    def execute[T](get: HttpGet, proxy: Option[HttpHost], checkError: Boolean = true, preventGetHeaderForward: Boolean = false)(f: HttpResponse ⇒ T) = {
+      val response = client(proxy = proxy, preventGetHeaderForward = preventGetHeaderForward).execute(get)
 
       if (checkError && response.getStatusLine.getStatusCode >= 300)
         throw new UserBadDataError(s"Docker registry responded with $response to the query $get, content is ${response.getEntity.getContent.toString}")
@@ -179,13 +171,13 @@ object Registry {
     case class AuthenticationRequest(scheme: String, realm: String, service: String, scope: String)
     case class Token(scheme: String, token: String)
 
-    def withToken(url: String, timeout: Time)(implicit networkservice: NetworkService) = {
+    def withToken(url: String, timeout: Time, proxy: Option[HttpHost]) = {
       val get = new HttpGet(url)
       get.setConfig(RequestConfig.custom().setConnectTimeout(timeout.millis.toInt).setConnectionRequestTimeout(timeout.millis.toInt).build())
 
-      val authenticationRequest = authentication(get)
+      val authenticationRequest = authentication(get, proxy = proxy)
 
-      val t = token(authenticationRequest.get) match {
+      val t = token(authenticationRequest.get, proxy = proxy) match {
         case Left(l)  ⇒ throw new RuntimeException(s"Failed to obtain authentication token: $l")
         case Right(r) ⇒ r
       }
@@ -196,7 +188,7 @@ object Registry {
       request
     }
 
-    def authentication(get: HttpGet)(implicit networkservice: NetworkService) = execute(get, checkError = false) { response ⇒
+    def authentication(get: HttpGet, proxy: Option[HttpHost]) = execute(get, proxy = proxy, checkError = false) { response ⇒
       Option(response.getFirstHeader("Www-Authenticate")).map(_.getValue).map {
         a ⇒
           val Array(scheme, rest) = a.split(" ")
@@ -210,11 +202,11 @@ object Registry {
       }
     }
 
-    def token(authenticationRequest: AuthenticationRequest)(implicit networkservice: NetworkService): Either[Err, Token] = {
+    def token(authenticationRequest: AuthenticationRequest, proxy: Option[HttpHost]): Either[Err, Token] = {
       val tokenRequest = s"${authenticationRequest.realm}?service=${authenticationRequest.service}&scope=${authenticationRequest.scope}"
 
       val get = new HttpGet(tokenRequest)
-      execute(get) { response ⇒
+      execute(get, proxy = proxy) { response ⇒
         // @Romain could be done with optics at the cost of an extra dependency ;)
         val tokenRes = for {
           parsed ← parse(content(response))
@@ -232,9 +224,9 @@ object Registry {
     s"${image.registry}/v2/$path"
   }
 
-  def downloadManifest(image: RegistryImage, timeout: Time)(implicit networkService: NetworkService): String = {
+  def downloadManifest(image: RegistryImage, timeout: Time, proxy: Option[HttpHost]): String = {
     val url = s"${baseURL(image)}/manifests/${image.tag}"
-    val httpResponse = client(preventGetHeaderForward = true).execute(Token.withToken(url, timeout))
+    val httpResponse = client(proxy = proxy, preventGetHeaderForward = true).execute(Token.withToken(url, timeout, proxy = proxy))
 
     if (httpResponse.getStatusLine.getStatusCode >= 300)
       throw new UserBadDataError(s"Docker registry responded with $httpResponse to query of image $image")
@@ -254,9 +246,9 @@ object Registry {
     fsLayer ← fsLayers
   } yield Layer(fsLayer.blobSum)
 
-  def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time)(implicit networkservice: NetworkService): Unit = {
+  def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time, proxy: Option[HttpHost]): Unit = {
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""
-    execute(Token.withToken(url, timeout), preventGetHeaderForward = true) { response ⇒
+    execute(Token.withToken(url, timeout, proxy = proxy), preventGetHeaderForward = true, proxy = proxy) { response ⇒
       val os = file.newOutputStream
       try Stream.copy(new GZIPInputStream(response.getEntity.getContent), os)
       finally os.close()
