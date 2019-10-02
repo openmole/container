@@ -251,30 +251,32 @@ object Proot {
          |fi
         """.stripMargin)
 
-  def preparePRootCommand(write: String => Unit) {
-    write("function " + runPRootFuncName + " {")
-    write("\t" + envFuncName) // setting environment variables
-    write("\t" + standardVarsFuncName) // setting standard proot variables
-    write("\t" + assembleCommandParts(
-      "$1", // calling PRoot
-      "-r $2", // setting guest rootfs
-      "-w $" + workdirBashVAR, // setting working directory
-      //       "$3", // user additional PRoot options
-      //       "$" + entryPointBashVar,
-      //       "$" + cmdBashVar,
-      "${@:3}" // user inputs for the program
-    ))
-    write("}\n")
+  def preparePRootCommand(write: String => Unit) = {
+    write(
+      s"""function $runPRootFuncName {
+         |  $envFuncName
+         |  $standardVarsFuncName
+         |  ${assembleCommandParts(
+              "$1", // calling PRoot
+              "-r $2", // setting guest rootfs
+              "-w $" + workdirBashVAR, // setting working directory
+              //       "$3", // user additional PRoot options
+              //       "$" + entryPointBashVar,
+              //       "$" + cmdBashVar,
+              "${@:3}" // user inputs for the program
+            )}
+         |}
+         |""".stripMargin)
   }
 
-  def prepareVariables(args: List[String], functionName: String, write: String => Unit) {
+  def prepareVariables(args: List[String], functionName: String, write: String => Unit) = {
     write("function " + functionName + " {")
     for(arg <- args)
       write("\t" + addQuoteToRightSideOfEquality(arg))
     write("}\n")
   }
 
-  def prepareEnvVariables(maybeArgs: Option[List[String]], functionName: String, write: String => Unit) {
+  def prepareEnvVariables(maybeArgs: Option[List[String]], functionName: String, write: String => Unit) = {
     write("function " + functionName + " {")
     maybeArgs match {
       case Some(args)     => {
@@ -286,7 +288,7 @@ object Proot {
     write("}\n")
   }
 
-  def prepareMapInfo(maybeMap: Option[Map[String, String]], title: String, functionName: String, write: String => Unit) {
+  def prepareMapInfo(maybeMap: Option[Map[String, String]], title: String, functionName: String, write: String => Unit) = {
     write("function " + functionName + " {")
     write("\techo \"" + title + ":\"")
     maybeMap match {

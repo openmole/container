@@ -25,7 +25,7 @@ object Test extends App {
 
   val image = RegistryImage("debian")
 
-  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved =
