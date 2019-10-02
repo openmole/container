@@ -36,10 +36,11 @@ import scala.sys.process._
 object ImageDownloader {
 
   case class ContainerConf(cmd: List[String])
-  case class Config(id: String,
-                    parent: String,
-                    created: String,
-                    containerConfig: ContainerConf)
+  case class Config(
+    id: String,
+    parent: String,
+    created: String,
+    containerConfig: ContainerConf)
   case class ImageNotFound(image: RegistryImage) extends Exception
 
   def downloadImageWithDocker(dockerImage: RegistryImage): SavedImage = {
@@ -61,10 +62,9 @@ object ImageDownloader {
     manifest + "\"" + last + "/layer.tar\"]}]"
   }
 
-   def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) = {
-      val x = imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
-     x
-   }
+   def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) =
+     imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
+
 
   def writeManifestFile(path: String, manifest: String): Unit = {
     BFile(path + "/manifest.json").appendLine(manifest)

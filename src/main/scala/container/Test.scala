@@ -32,7 +32,15 @@ object Test extends App {
     ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes, executor =  ImageDownloader.Executor.parallel)
 
   val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
-  print(Proot.execute(buildProot, Some(Seq("/bin/ls", "/"))))
+  print(
+    Proot.execute(
+      buildProot,
+      Seq("/bin/ls")
+    )
+  )
+    /*,
+      bind = Vector("/tmp/youpi" -> "/home/youpi"),
+      workDirectory = Some("/home")))*/
 
   //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))

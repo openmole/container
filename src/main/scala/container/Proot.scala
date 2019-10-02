@@ -24,7 +24,6 @@ import container.ImageBuilder.checkImageFile
 import container.OCI._
 import container.Status._
 import better.files._
-//import container.JSONUtils._
 import scala.sys.process._
 
 object Proot {
@@ -228,33 +227,29 @@ object Proot {
     return OK
   }
 
-  //MYSQL_ROOT_PASSWORD=secret ./launcher.sh run ../../proot rootfs "-b ./data/mysql:/var/lib/mysql -b ./data/log:/var/log/mysql"
-  // MYSQL_ROOT_PASSWORD=secret ./launcher.sh run ../../proot rootfs "-b ./data2/mysql:/var/lib/mysql -b ./data2/log:/var/log/mysql -b ./data2/mysqld:/var/run/mysqld -p 3306:3308"
-
-  def prepareCLI(write: String => Unit) {
-    write("if (( \"$#\" < 1 )); then")
-    write("\t" + printCommandsFuncName)
-    write("elif [ \"$1\" = 'info' ]; then")
-    write("\tif [ \"$2\" = 'volumes' ]; then")
-    write("\t\t" + infoVolumesFuncName)
-    write("\telif [ \"$2\" = 'ports' ]; then")
-    write("\t\t" + infoPortsFuncName)
-    write("\telse")
-    write("\t\t" + infoVolumesFuncName)
-    write("\t\t" + infoPortsFuncName)
-    write("\tfi")
-
-    write("elif [ \"$1\" = 'run' ]; then")
-    write("\tif (( \"$#\" < 3 )); then")
-    write("\t\t" + printCommandsFuncName)
-    write("else")
-    write("\t\t" + runPRootFuncName + " $2 $3 \"$4\" ${@:5} ")
-    write("\tfi")
-
-    write("else")
-    write("\t" + printCommandsFuncName)
-    write("fi\n")
-  }
+  def prepareCLI(write: String => Unit) =
+    write(
+      s"""if (( "$$#" < 1 )); then
+         |  $printCommandsFuncName
+         |elif [ "$$1" = 'info' ]; then
+         |  if [ "$$2" = 'volumes' ]; then
+         |    $infoVolumesFuncName
+         |  elif [ "$$2" = 'ports' ]; then
+         |    $infoPortsFuncName
+         |  else
+         |    $infoVolumesFuncName
+         |    $infoPortsFuncName
+         |  fi
+         |elif [ "$$1" = 'run' ]; then
+         |  if (( "$$#" < 3 )); then
+         |    $printCommandsFuncName
+         |  else
+         |    $runPRootFuncName $$2 $$3 "$$4" $${@:5}
+         |  fi
+         |else
+         |  $printCommandsFuncName
+         |fi
+        """.stripMargin)
 
   def preparePRootCommand(write: String => Unit) {
     write("function " + runPRootFuncName + " {")
@@ -342,7 +337,13 @@ object Proot {
     }
   }
 
-  def execute(image: BuiltPRootImage, command: Option[Seq[String]] = None, proot: String = "proot") = {
+  def execute(
+    image: BuiltPRootImage,
+    command: Seq[String] = Vector.empty,
+    proot: String = "proot",
+    bind: Seq[(String, String)] = Vector.empty,
+    workDirectory: Option[String] = None,
+    environmentVariables: Seq[(String, String)] = Vector.empty) = {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
@@ -350,7 +351,13 @@ object Proot {
 
     generatePRootScript(path, image.configurationData)
 
-    (Seq(path + "launcher.sh", "run", proot, rootFSPath) ++ command.getOrElse(image.command)).!!
+    val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
+    val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
+
+    val commandArgs = if(command.isEmpty) image.command else command
+
+
+    Process(Seq(path + "launcher.sh", "run", proot, rootFSPath, s"$bindArgs $workDirectoryArgs --kill-on-exit --netcoop") ++ commandArgs, None, extraEnv = environmentVariables: _*) !!
   }
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
