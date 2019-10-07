@@ -28,3 +28,62 @@ addCompilerPlugin(
 
 libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.5" % "test"
 
+
+/* Publish */
+
+publishMavenStyle in ThisBuild := true
+publishArtifact in Test in ThisBuild := false
+publishArtifact := false
+pomIncludeRepository in ThisBuild := { _ => false }
+
+publishTo in ThisBuild := sonatypePublishToBundle.value
+
+pomIncludeRepository in ThisBuild := { _ => false }
+
+licenses in ThisBuild := Seq("Affero GPLv3" -> url("http://www.gnu.org/licenses/"))
+
+homepage in ThisBuild := Some(url("https://github.com/openmole/container"))
+
+scmInfo in ThisBuild := Some(ScmInfo(url("https://github.com/openmole/container.git"), "scm:git:git@github.com:openmole/container.git"))
+
+pomExtra in ThisBuild := (
+  <developers>
+    <developer>
+      <id>romainreuillon</id>
+      <name>Romain Reuillon</name>
+    </developer>
+  </developers>
+)
+
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
+
+releaseVersionBump := sbtrelease.Version.Bump.Minor
+
+releaseTagComment := s"Releasing ${(version in ThisBuild).value}"
+
+releaseCommitMessage := s"Bump version to ${(version in ThisBuild).value}"
+
+sonatypeProfileName := "fr.iscpif"
+
+publishConfiguration := publishConfiguration.value.withOverwrite(true)
+
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
+
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  tagRelease,
+  releaseStepCommand("publishSigned"),
+  releaseStepCommand("sonatypeBundleRelease"),
+  setNextVersion,
+  commitNextVersion,
+  pushChanges
+)
+
+
+
+

@@ -27,9 +27,10 @@ import container.OCI.ConfigurationData
 
 object CharlieCloud {
 
-  case class BuiltCharlieCloudImage(file: File,
-                                    configurationData: ConfigurationData,
-                                    command: Seq[String] = Seq())
+  case class BuiltCharlieCloudImage(
+    file: File,
+    configurationData: ConfigurationData,
+    command: Seq[String] = Seq())
 
   def execute(chRun: File, image: BuiltCharlieCloudImage, command: Option[Seq[String]] = None) = {
     checkImageFile(image.file)
@@ -46,6 +47,5 @@ object CharlieCloud {
   def clean(image: BuiltCharlieCloudImage): Unit = {
     image.file.toScala.delete()
   }
-
 
 }

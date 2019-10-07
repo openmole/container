@@ -1,34 +1,34 @@
 /**
-  * Copyright (C) 2017 Jonathan Passerat-Palmbach
-  * Copyright (C) 2017 Romain Reuillon
-  *
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
-  *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  *
-  * You should have received a copy of the GNU General Public License
-  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  */
+ * Copyright (C) 2017 Jonathan Passerat-Palmbach
+ * Copyright (C) 2017 Romain Reuillon
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 package container
 
-import better.files.{File => BFile, _}
-import java.io.{File, _}
-import java.util.concurrent.{Callable, ThreadPoolExecutor, TimeUnit, TimeoutException}
-import java.util.zip.{GZIPInputStream, GZIPOutputStream}
+import better.files.{ File => BFile, _ }
+import java.io.{ File, _ }
+import java.util.concurrent.{ Callable, ThreadPoolExecutor, TimeUnit, TimeoutException }
+import java.util.zip.{ GZIPInputStream, GZIPOutputStream }
 import java.net.URI
 
-import container.OCI.{ConfigurationData, ManifestData}
-import org.apache.http.{Header, HttpHost, HttpRequest, HttpResponse}
+import container.OCI.{ ConfigurationData, ManifestData }
+import org.apache.http.{ Header, HttpHost, HttpRequest, HttpResponse }
 import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.{HttpGet, HttpHead, HttpUriRequest, RequestBuilder}
-import org.apache.http.impl.client.{DefaultHttpRequestRetryHandler, HttpClients, LaxRedirectStrategy}
+import org.apache.http.client.methods.{ HttpGet, HttpHead, HttpUriRequest, RequestBuilder }
+import org.apache.http.impl.client.{ DefaultHttpRequestRetryHandler, HttpClients, LaxRedirectStrategy }
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager
 import DockerMetadata._
 import io.circe.syntax._
@@ -52,7 +52,6 @@ class UserBadDataError(exception: Throwable, val message: String) extends Except
   }
 }
 // ...
-
 
 // ---------
 object NetworkService {
@@ -86,7 +85,6 @@ case class PreparedImage(
   configurationData: ConfigurationData,
   command: Seq[String] = Seq())
 
-
 object Stream {
   def copy(inputStream: InputStream, outputStream: OutputStream) = {
     val DefaultBufferSize = 16 * 1024
@@ -98,8 +96,8 @@ object Stream {
 object Registry {
 
   // ...
- // type FileInfo = (External.DeployedFile, File)
- // type VolumeInfo = (File, String)
+  // type FileInfo = (External.DeployedFile, File)
+  // type VolumeInfo = (File, String)
   type MountPoint = (String, String)
   type ContainerId = String
   // ...
@@ -124,8 +122,7 @@ object Registry {
               override def setHeaders(headers: Array[Header]): Unit = {}
             }
           else new HttpGet(uri)
-        }
-        else {
+        } else {
           val status = response.getStatusLine.getStatusCode
           (if (status == 307) RequestBuilder.copy(request).setUri(uri).build
           else new HttpGet(uri)).asInstanceOf[HttpUriRequest]
@@ -137,14 +134,14 @@ object Registry {
 
     def builder(preventGetHeaderForward: Boolean = false) =
       HttpClients.custom().setConnectionManager(new BasicHttpClientConnectionManager()).setRedirectStrategy(redirectStrategy(preventGetHeaderForward))
-/*
+    /*
     def httpProxyAsHost(implicit networkService: NetworkService): Option[HttpHost] =
       networkService.httpProxy.map { host ⇒ HttpHost.create(NetworkService.HttpHost.toString(host)) }
 */
     def client(proxy: Option[HttpHost], preventGetHeaderForward: Boolean = false) =
       proxy match {
         case Some(httpHost: HttpHost) ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).setProxy(httpHost).build()
-        case _                        ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).build()
+        case _ ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).build()
       }
 
     def execute[T](get: HttpGet, proxy: Option[HttpHost], checkError: Boolean = true, preventGetHeaderForward: Boolean = false)(f: HttpResponse ⇒ T) = {
@@ -178,7 +175,7 @@ object Registry {
       val authenticationRequest = authentication(get, proxy = proxy)
 
       val t = token(authenticationRequest.get, proxy = proxy) match {
-        case Left(l)  ⇒ throw new RuntimeException(s"Failed to obtain authentication token: $l")
+        case Left(l) ⇒ throw new RuntimeException(s"Failed to obtain authentication token: $l")
         case Right(r) ⇒ r
       }
 

@@ -17,8 +17,7 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-import java.io.{File, PrintWriter}
+import java.io.{ File, PrintWriter }
 
 import container.ImageBuilder.checkImageFile
 import container.OCI._
@@ -28,9 +27,10 @@ import scala.sys.process._
 
 object Proot {
 
-  case class BuiltPRootImage(file: File,
-                             configurationData: ConfigurationData,
-                             command: Seq[String] = Seq())
+  case class BuiltPRootImage(
+    file: File,
+    configurationData: ConfigurationData,
+    command: Seq[String] = Seq())
 
   val rootfsName = "rootfs"
   val scriptName = "launcher.sh"
@@ -67,10 +67,10 @@ object Proot {
   //        return OK
   //    }
 
-
-  /** Check that the image or directory exists, and extract it if it hasn't been already.
-    * Return the status and the directory where the image has been extracted.
-    */
+  /**
+   * Check that the image or directory exists, and extract it if it hasn't been already.
+   * Return the status and the directory where the image has been extracted.
+   */
   //    def prepareImage(imagePath: String): (Status, Option[String]) = {
   //        var status: Status = OK
   //        val file = new File(imagePath)
@@ -102,10 +102,10 @@ object Proot {
   //        }
   //    }
 
-
-  /** Retrieve metadata (layer ids, env variables, volumes, ports, commands)
-    * from the manifest and configuration files.
-    */
+  /**
+   * Retrieve metadata (layer ids, env variables, volumes, ports, commands)
+   * from the manifest and configuration files.
+   */
   //    def analyseImage(directoryPath: String): (Status, Option[ManifestData], Option[ConfigurationData]) = {
   //        val rootDirectory = new File(directoryPath)
   //
@@ -134,9 +134,10 @@ object Proot {
   //    }
   //
 
-  /** Merge the layers by extracting them in order in a same directory.
-    * Also, delete the whiteout files.
-    */
+  /**
+   * Merge the layers by extracting them in order in a same directory.
+   * Also, delete the whiteout files.
+   */
   //    def squashImage(directoryPath: String, layers: List[String]): Status = {
   //        val rootfsPath = directoryPath + rootfsName
   //        createDirectory(rootfsPath) match {
@@ -162,7 +163,6 @@ object Proot {
   //
   //        return OK
   //    }
-
 
   val standardVarsFuncName = "prepareStandardVars"
   val envFuncName = "prepareEnv"
@@ -200,7 +200,7 @@ object Proot {
     scriptFile.getParentFile.mkdirs()
 
     for {
-      script <-scriptFile.toScala.newFileWriter().autoClosed // new PrintWriter(scriptFile)
+      script <- scriptFile.toScala.newFileWriter().autoClosed // new PrintWriter(scriptFile)
     } {
       val writeln = (s: String) => script.write(s + "\n")
 
@@ -224,8 +224,7 @@ object Proot {
       prepareVariables(List(
         workdirBashVAR + "=" + workDir,
         entryPointBashVar + "=" + entryPoint,
-        cmdBashVar + "=" + cmd
-      ), standardVarsFuncName, writeln)
+        cmdBashVar + "=" + cmd), standardVarsFuncName, writeln)
 
       prepareEnvVariables(config.Env, envFuncName, writeln)
 
@@ -238,7 +237,7 @@ object Proot {
         rootFS = rootFS,
         workDirectory = workDirectory,
         bind = bind,
-        environmentVariables =  environmentVariables,
+        environmentVariables = environmentVariables,
         commandLine = commandLine)
       prepareCLI(writeln)
     }
@@ -265,25 +264,27 @@ object Proot {
       s"""function $runPRootFuncName {
          |  PROOT=`which $proot`
          |  for i in $$(env | cut -d'=' -f1) ; do unset $$i; done
-         |  ${environmentVariables.map { case(n, v) => s"export $n=$v"}.mkString("\n")}
+         |  ${environmentVariables.map { case (n, v) => s"export $n=$v" }.mkString("\n")}
          |  $envFuncName
          |  $standardVarsFuncName
-         |  ${assembleCommandParts(
-              "$PROOT", // calling PRoot
-              "--kill-on-exit",
-              "--netcoop",
-              s"-r $rootFS", // setting guest rootfs
-              workDirectoryArgs, // + workdirBashVAR, // setting working directory,
-              bindArgs,
-              commandLine // user inputs for the program
-            )}
+         |  ${
+        assembleCommandParts(
+          "$PROOT", // calling PRoot
+          "--kill-on-exit",
+          "--netcoop",
+          s"-r $rootFS", // setting guest rootfs
+          workDirectoryArgs, // + workdirBashVAR, // setting working directory,
+          bindArgs,
+          commandLine // user inputs for the program
+        )
+      }
          |}
          |""".stripMargin)
   }
 
   def prepareVariables(args: List[String], functionName: String, write: String => Unit) = {
     write("function " + functionName + " {")
-    for(arg <- args)
+    for (arg <- args)
       write("\t" + addQuoteToRightSideOfEquality(arg))
     write("}\n")
   }
@@ -291,11 +292,11 @@ object Proot {
   def prepareEnvVariables(maybeArgs: Option[List[String]], functionName: String, write: String => Unit) = {
     write("function " + functionName + " {")
     maybeArgs match {
-      case Some(args)     => {
-        for(arg <- args)
+      case Some(args) => {
+        for (arg <- args)
           write("\texport " + addQuoteToRightSideOfEquality(arg))
       }
-      case _              => write("\t:")
+      case _ => write("\t:")
     }
     write("}\n")
   }
@@ -304,13 +305,13 @@ object Proot {
     write("function " + functionName + " {")
     write("\techo \"" + title + ":\"")
     maybeMap match {
-      case Some(map)      => for((variable, _) <- map) write("\techo \"\t" + variable + "\"")
-      case _              =>
+      case Some(map) => for ((variable, _) <- map) write("\techo \"\t" + variable + "\"")
+      case _ =>
     }
     write("}\n")
   }
 
-  def assembleCommandParts(args:String*): String = {
+  def assembleCommandParts(args: String*): String = {
     var command = ""
     for (arg <- args) command += arg + " "
     command
@@ -320,8 +321,8 @@ object Proot {
 
   def addQuoteToRightSideOfEquality(s: String) = {
     s.split('=') match {
-      case Array(left, right)  => left + "=\"" + right + "\""
-      case _              => s
+      case Array(left, right) => left + "=\"" + right + "\""
+      case _ => s
     }
   }
 
@@ -339,7 +340,7 @@ object Proot {
     val path = image.file.getAbsolutePath + "/"
     val rootFSPath = path + rootfsName
 
-    val commandArgs = if(command.isEmpty) image.command else command
+    val commandArgs = if (command.isEmpty) image.command else command
 
     val script = (tmpDirectory.toScala / launchScriptName).toJava
     generatePRootScript(

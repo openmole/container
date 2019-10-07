@@ -1,6 +1,6 @@
 package container
 
-import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
+import java.io.{ BufferedOutputStream, FileOutputStream, OutputStream }
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 
@@ -78,7 +78,7 @@ object lock {
     finally lockFile.delete()
   }
 
-  private def autoClose[A <: AutoCloseable,B](closeable: A)(fun: (A) ⇒ B): B = {
+  private def autoClose[A <: AutoCloseable, B](closeable: A)(fun: (A) ⇒ B): B = {
     var t: Throwable = null
     try {
       fun(closeable)

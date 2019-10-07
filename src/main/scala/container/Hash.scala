@@ -17,7 +17,7 @@
 
 package container
 
-import java.io.{BufferedInputStream, FileInputStream, InputStream}
+import java.io.{ BufferedInputStream, FileInputStream, InputStream }
 import java.security.MessageDigest
 
 import squants.information.Information

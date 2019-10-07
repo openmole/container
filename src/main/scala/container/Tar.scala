@@ -18,13 +18,12 @@
 package container
 
 import org.apache.commons.compress.archivers.tar._
-import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException}
-import java.nio.file.{Files, LinkOption, Path, Paths, StandardCopyOption}
+import java.io.{ BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException }
+import java.nio.file.{ Files, LinkOption, Path, Paths, StandardCopyOption }
 import java.util
 
 import collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-
 
 object Tar {
 
@@ -65,20 +64,17 @@ object Tar {
 
             // create the actual tar entry for the directory
             new TarArchiveEntry(entryName + '/')
-          }
-          // tar distinguishes symlinks
+          } // tar distinguishes symlinks
           else if (isSymbolicLink) {
             val e = new TarArchiveEntry(entryName, TarConstants.LF_SYMLINK)
             e.setLinkName(Files.readSymbolicLink(source.toPath).toString)
             e
-          }
-          // plain files
+          } // plain files
           else {
             val e = new TarArchiveEntry(entryName)
             e.setSize(Files.size(source.toPath))
             e
           }
-
 
         def mode(source: Path) = {
           val f = source.toRealPath()
@@ -98,7 +94,6 @@ object Tar {
       }
     } finally tos.close()
   }
-
 
   def extract(archive: File, directory: File, overwrite: Boolean = false) = {
     /** set mode from an integer as retrieved from a Tar archive */
@@ -122,8 +117,7 @@ object Tar {
           if (e.isDirectory) {
             Files.createDirectories(dest)
             directoryRights += (dest -> e.getMode)
-          }
-          else {
+          } else {
             Files.createDirectories(dest.getParent)
 
             // has the entry been marked as a symlink in the archive?
@@ -139,7 +133,7 @@ object Tar {
       // Set directory right after extraction in case some directory are not writable
       for {
         (path, mode) ← directoryRights
-      }  setMode(path, mode)
+      } setMode(path, mode)
     } finally tis.close()
   }
 

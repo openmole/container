@@ -29,7 +29,7 @@ object Test extends App {
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved =
-    ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes, executor =  ImageDownloader.Executor.parallel)
+    ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
   print(
@@ -37,24 +37,20 @@ object Test extends App {
       buildProot,
       File("/tmp/").toJava,
       Seq("/bin/echo $TEST"),
-      environmentVariables = Seq("TEST" -> "YOUPI")
-    )
-  )
-    /*,
+      environmentVariables = Seq("TEST" -> "YOUPI")))
+  /*,
       bind = Vector("/tmp/youpi" -> "/home/youpi"),
       workDirectory = Some("/home")))*/
 
   //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
 
+  //  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
+  //  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
+  //  finally Docker.clean(build)
 
-//  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
-//  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
-//  finally Docker.clean(build)
-
-    //val build = Singularity.build(saved, new java.io.File("/tmp/fake.simg"))
-    //print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
-    //finally Docker.clean(build)
-
+  //val build = Singularity.build(saved, new java.io.File("/tmp/fake.simg"))
+  //print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
+  //finally Docker.clean(build)
 
 }

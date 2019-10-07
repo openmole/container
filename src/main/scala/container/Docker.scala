@@ -25,10 +25,11 @@ import scala.sys.process._
  */
 object Docker {
 
-  case class BuiltDockerImage(file: File,
-                              imageName: String,
-                              //   configurationData: ConfigurationData,
-                              command: Seq[String] = Seq())
+  case class BuiltDockerImage(
+    file: File,
+    imageName: String,
+    //   configurationData: ConfigurationData,
+    command: Seq[String] = Seq())
 
   def build(image: SavedImage, archive: File, dockerCommand: String = "docker"): BuiltDockerImage = {
     if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
@@ -47,7 +48,6 @@ object Docker {
     BuiltDockerImage(archive, imageName, image.command)
   }
 
-
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
     Seq(dockerCommand, "run", "--name", image.imageName, image.imageName) ++ command.getOrElse(image.command) !!
 
@@ -56,6 +56,5 @@ object Docker {
     (s"$dockerCommand rmi ${image.imageName}").!!
     image.file.delete()
   }
-
 
 }

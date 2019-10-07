@@ -17,7 +17,6 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 import container.ImageBuilder.checkImageFile
 import container.OCI.ConfigurationData
 import java.io.File
@@ -30,11 +29,11 @@ object Singularity {
     file: File,
     command: Seq[String] = Seq())
 
-//  def buildImage(image: SavedImage, workDirectory: File): BuiltSingularityImage = {
-//    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, workDirectory))
-//    ImageBuilder.buildImage(preparedImage, workDirectory)
-//    BuiltSingularityImage(workDirectory, preparedImage.configurationData, preparedImage.command)
-//  }
+  //  def buildImage(image: SavedImage, workDirectory: File): BuiltSingularityImage = {
+  //    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, workDirectory))
+  //    ImageBuilder.buildImage(preparedImage, workDirectory)
+  //    BuiltSingularityImage(workDirectory, preparedImage.configurationData, preparedImage.command)
+  //  }
 
   def build(image: SavedImage, archive: File, singularityCommand: String = "singularity"): BuiltSingularityImage = {
     //if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)

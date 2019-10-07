@@ -17,15 +17,15 @@ import scala.sys.process.Process
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package object container {
-//  def prepareEnvVariables(maybeArgs: Option[List[String]]) {
-//    maybeArgs match {
-//      case Some(args)     =>
-//        for (arg <- args)
-//        {
-//          val s = arg.split("=")
-//          if (s.length == 2) Process("bash", None, s(0) -> s(1)) !!
-//        }
-//      case _              =>
-//    }
-//  }
+  //  def prepareEnvVariables(maybeArgs: Option[List[String]]) {
+  //    maybeArgs match {
+  //      case Some(args)     =>
+  //        for (arg <- args)
+  //        {
+  //          val s = arg.split("=")
+  //          if (s.length == 2) Process("bash", None, s(0) -> s(1)) !!
+  //        }
+  //      case _              =>
+  //    }
+  //  }
 }

@@ -18,9 +18,9 @@ package container
 
 import java.io.File
 import java.util.UUID
-import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
+import java.util.concurrent.{ ExecutorService, Executors, ThreadFactory }
 
-import better.files.{File => BFile}
+import better.files.{ File => BFile }
 import container.DockerMetadata._
 import container.Registry._
 import io.circe._
@@ -30,7 +30,7 @@ import squants.time._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.sys.process._
 
 object ImageDownloader {
@@ -62,9 +62,8 @@ object ImageDownloader {
     manifest + "\"" + last + "/layer.tar\"]}]"
   }
 
-   def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) =
-     imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
-
+  def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) =
+    imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
 
   def writeManifestFile(path: String, manifest: String): Unit = {
     BFile(path + "/manifest.json").appendLine(manifest)
@@ -87,7 +86,7 @@ object ImageDownloader {
 
     def parallel(implicit executorService: ExecutorService = Executors.newFixedThreadPool(10, daemonFactory)) = new Executor {
       override def apply[T](f: => T): Future[T] =
-        Future { f } (ExecutionContext.fromExecutorService(executorService))
+        Future { f }(ExecutionContext.fromExecutorService(executorService))
     }
   }
 
@@ -104,7 +103,7 @@ object ImageDownloader {
     import better.files._
 
     val tmpDirectory = localRepository.toScala / ".tmp"
-    val imageDirectory = localRepository.toScala /  dockerImage.imageName
+    val imageDirectory = localRepository.toScala / dockerImage.imageName
     val idsDirectory = imageDirectory / "id"
 
     tmpDirectory.createDirectoryIfNotExists()
@@ -127,10 +126,10 @@ object ImageDownloader {
                 case Left(error) => false
               }
 
-              cursor.get[String]("id") match {
-                case Right(id) => id -> ignore
-                case Left(error) => throw error
-              }
+            cursor.get[String]("id") match {
+              case Right(id) => id -> ignore
+              case Left(error) => throw error
+            }
           }
         }
 
@@ -142,8 +141,8 @@ object ImageDownloader {
             ((hash, (id, ignore)), v1compat) <- (layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig)
           } yield executor {
             val idFile = idsDirectory / id
-            if(!ignore) {
-              if(!idFile.exists) {
+            if (!ignore) {
+              if (!idFile.exists) {
                 val dirName = UUID.randomUUID().toString
                 val tmpLayerDir = tmpDirectory / dirName
 
@@ -179,7 +178,7 @@ object ImageDownloader {
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
         val configString = getConfigAsString(manifestValue, layersHashMap)
 
-          // should it be written each time
+        // should it be written each time
         val configName = Hash.sha256(configString) + ".json"
         (imageDirectory / configName) write configString
 
