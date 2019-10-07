@@ -1,9 +1,8 @@
 
-scalaVersion := "2.12.7"
+scalaVersion := "2.12.10"
 name := "container"
 organization := "org.openmole"
 
-libraryDependencies += "org.typelevel" %% "cats-core" % "1.1.0"
 libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.6"
 libraryDependencies += "org.typelevel"  %% "squants"  % "1.3.0"
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
@@ -22,11 +21,9 @@ libraryDependencies ++= Seq(
 
 ).map(_ % circeVersion)
 
-addCompilerPlugin(
-  "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
-)
+addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
 
-libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.5" % "test"
+//libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.5" % "test"
 
 
 /* Publish */
