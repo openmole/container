@@ -35,7 +35,9 @@ object Test extends App {
   print(
     Proot.execute(
       buildProot,
-      Seq("/bin/ls")
+      File("/tmp/").toJava,
+      Seq("/bin/echo $TEST"),
+      environmentVariables = Seq("TEST" -> "YOUPI")
     )
   )
     /*,

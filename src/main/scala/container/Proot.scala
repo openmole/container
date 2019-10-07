@@ -176,7 +176,16 @@ object Proot {
   val cmdBashVar = bashVarPrefix + "CMD"
   val launchScriptName = "launch.sh"
 
-  def generatePRootScript(scriptFile: java.io.File, config: ConfigurationData): Unit = {
+  def generatePRootScript(
+    scriptFile: java.io.File,
+    config: ConfigurationData,
+    proot: String,
+    rootFS: String,
+    workDirectory: Option[String],
+    bind: Seq[(String, String)],
+    environmentVariables: Seq[(String, String)],
+    commandLine: String) = {
+
     //        val config = configInit match {
     //            case Some(conf) => conf
     //            case None       => {
@@ -187,6 +196,8 @@ object Proot {
     //                configData
     //            }
     //        }
+
+    scriptFile.getParentFile.mkdirs()
 
     for {
       script <-scriptFile.toScala.newFileWriter().autoClosed // new PrintWriter(scriptFile)
@@ -221,8 +232,14 @@ object Proot {
       prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
       prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
 
-      preparePRootCommand(writeln)
-      preparePrintCommands(writeln)
+      preparePRootCommand(
+        writeln,
+        proot,
+        rootFS = rootFS,
+        workDirectory = workDirectory,
+        bind = bind,
+        environmentVariables =  environmentVariables,
+        commandLine = commandLine)
       prepareCLI(writeln)
     }
 
@@ -230,43 +247,35 @@ object Proot {
   }
 
   def prepareCLI(write: String => Unit) =
-    write(
-      s"""if (( "$$#" < 1 )); then
-         |  $printCommandsFuncName
-         |elif [ "$$1" = 'info' ]; then
-         |  if [ "$$2" = 'volumes' ]; then
-         |    $infoVolumesFuncName
-         |  elif [ "$$2" = 'ports' ]; then
-         |    $infoPortsFuncName
-         |  else
-         |    $infoVolumesFuncName
-         |    $infoPortsFuncName
-         |  fi
-         |elif [ "$$1" = 'run' ]; then
-         |  if (( "$$#" < 3 )); then
-         |    $printCommandsFuncName
-         |  else
-         |    $runPRootFuncName $$2 $$3 "$$4" $${@:5}
-         |  fi
-         |else
-         |  $printCommandsFuncName
-         |fi
-        """.stripMargin)
+    write(s"""$runPRootFuncName $$1 "$$2" $${@:3}""".stripMargin)
 
-  def preparePRootCommand(write: String => Unit) = {
+  def preparePRootCommand(
+    write: String => Unit,
+    proot: String,
+    rootFS: String,
+    workDirectory: Option[String],
+    bind: Seq[(String, String)],
+    environmentVariables: Seq[(String, String)],
+    commandLine: String) = {
+
+    val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
+    val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
+
     write(
       s"""function $runPRootFuncName {
-         |  PROOT=`which $$1`
+         |  PROOT=`which $proot`
+         |  for i in $$(env | cut -d'=' -f1) ; do unset $$i; done
+         |  ${environmentVariables.map { case(n, v) => s"export $n=$v"}.mkString("\n")}
          |  $envFuncName
          |  $standardVarsFuncName
          |  ${assembleCommandParts(
               "$PROOT", // calling PRoot
-              "-r $2", // setting guest rootfs
-              "-w $" + workdirBashVAR, // setting working directory
-              //       "$3", // user additional PRoot options
-              //       "$" + entryPointBashVar,
-              //       "$" + cmdBashVar,
-              "${@:3}" // user inputs for the program
+              "--kill-on-exit",
+              "--netcoop",
+              s"-r $rootFS", // setting guest rootfs
+              workDirectoryArgs, // + workdirBashVAR, // setting working directory,
+              bindArgs,
+              commandLine // user inputs for the program
             )}
          |}
          |""".stripMargin)
@@ -295,45 +304,19 @@ object Proot {
     write("function " + functionName + " {")
     write("\techo \"" + title + ":\"")
     maybeMap match {
-      case Some(map)      => {
-        for((variable, _) <- map)
-          write("\techo \"\t" + variable + "\"")
-      }
+      case Some(map)      => for((variable, _) <- map) write("\techo \"\t" + variable + "\"")
       case _              =>
     }
     write("}\n")
   }
 
-  def preparePrintCommands(write: String => Unit) = {
-    write("function " + printCommandsFuncName + " {")
-    write("\techo 'Commands:'")
-    write("\techo '\tinfo <arg1>'")
-    write("\techo '\t\tDisplay the data volumes or ports used the image.'")
-    write("\techo '\t\t<arg1>: nothing, volumes or ports'")
-    write("\techo ''")
-    write("\techo '\trun <arg1> <arg2> <arg3> <args...>'")
-    write("\techo '\t\tRun the image using PRoot.'")
-    write("\techo '\t\t<arg1>: \tpath to the PRoot binary'")
-    write("\techo '\t\t<arg2>: \tpath to the image root filesystem (rootfs)'")
-    write("\techo '\t\t<arg3>: \toptions for PRoot. See PRoot manual for more info.'")
-    write("\techo '\t\t\tWrap all of them with quotes (ex: \"-p 5432:5433 -p 8000:8001\").'")
-    write("\techo '\t\t<args...>: \targuments for the image program'")
-    write("}\n")
-  }
-
-  def assembleCommandParts(args:String*) = {
+  def assembleCommandParts(args:String*): String = {
     var command = ""
-    for (arg <- args)
-      command += arg + " "
+    for (arg <- args) command += arg + " "
     command
   }
 
-  def assembleCommandParts(args: List[String]) = {
-    var command = ""
-    for (arg <- args)
-      command += arg + " "
-    command
-  }
+  def assembleCommandParts(args: List[String]): String = assembleCommandParts(args: _*)
 
   def addQuoteToRightSideOfEquality(s: String) = {
     s.split('=') match {
@@ -344,6 +327,7 @@ object Proot {
 
   def execute(
     image: BuiltPRootImage,
+    tmpDirectory: File,
     command: Seq[String] = Vector.empty,
     proot: String = "proot",
     bind: Seq[(String, String)] = Vector.empty,
@@ -355,25 +339,27 @@ object Proot {
     val path = image.file.getAbsolutePath + "/"
     val rootFSPath = path + rootfsName
 
-    val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
-    val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
-
     val commandArgs = if(command.isEmpty) image.command else command
 
-    Process(
-      Seq(
-        path + launchScriptName,
-        "run",
-        proot,
-        rootFSPath,
-        s"$bindArgs $workDirectoryArgs --kill-on-exit --netcoop") ++ commandArgs, None, extraEnv = environmentVariables: _*) !!
+    val script = (tmpDirectory.toScala / launchScriptName).toJava
+    generatePRootScript(
+      script,
+      image.configurationData,
+      proot = proot,
+      rootFS = rootFSPath,
+      workDirectory = workDirectory,
+      bind = bind,
+      environmentVariables = environmentVariables,
+      commandLine = commandArgs.mkString(" "))
+
+    try script.getAbsolutePath !!
+    finally script.delete()
   }
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
     val rooFSPath = workDirectory.toScala / rootfsName
     val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, rooFSPath.toJava))
     ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)
-    generatePRootScript((workDirectory.toScala / launchScriptName).toJava, preparedImage.configurationData)
     BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 
