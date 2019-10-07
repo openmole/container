@@ -174,8 +174,9 @@ object Proot {
   val workdirBashVAR = bashVarPrefix + "WORKDIR"
   val entryPointBashVar = bashVarPrefix + "ENTRYPOINT"
   val cmdBashVar = bashVarPrefix + "CMD"
+  val launchScriptName = "launch.sh"
 
-  def generatePRootScript(directory: String, config: ConfigurationData): Status = {
+  def generatePRootScript(scriptFile: java.io.File, config: ConfigurationData): Unit = {
     //        val config = configInit match {
     //            case Some(conf) => conf
     //            case None       => {
@@ -186,45 +187,46 @@ object Proot {
     //                configData
     //            }
     //        }
-    //
-    val scriptFile = new File(directory + "/" + scriptName)
-    val script = new PrintWriter(scriptFile)
-    val writeln = (s: String) => script.write(s + "\n")
-    val writelnln = (s: String) => script.write(s + "\n\n")
 
-    writelnln("#!/usr/bin/env bash")
+    for {
+      script <-scriptFile.toScala.newFileWriter().autoClosed // new PrintWriter(scriptFile)
+    } {
+      val writeln = (s: String) => script.write(s + "\n")
 
-    val workDir = config.WorkingDir match {
-      case Some(s) if !s.isEmpty  => s
-      case _                      => "/"
+      writeln("#!/usr/bin/env bash\n")
+
+      val workDir = config.WorkingDir match {
+        case Some(s) if !s.isEmpty => s
+        case _ => "/"
+      }
+
+      val entryPoint = config.Entrypoint match {
+        case Some(list) => assembleCommandParts(list)
+        case _ => ""
+      }
+
+      val cmd = config.Cmd match {
+        case Some(list) => assembleCommandParts(list)
+        case _ => ""
+      }
+
+      prepareVariables(List(
+        workdirBashVAR + "=" + workDir,
+        entryPointBashVar + "=" + entryPoint,
+        cmdBashVar + "=" + cmd
+      ), standardVarsFuncName, writeln)
+
+      prepareEnvVariables(config.Env, envFuncName, writeln)
+
+      prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
+      prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
+
+      preparePRootCommand(writeln)
+      preparePrintCommands(writeln)
+      prepareCLI(writeln)
     }
-    val entryPoint = config.Entrypoint match {
-      case Some(list)             => assembleCommandParts(list)
-      case _                      => ""
-    }
-    val cmd = config.Cmd match {
-      case Some(list)             => assembleCommandParts(list)
-      case _                      => ""
-    }
-    prepareVariables(List(
-      workdirBashVAR      + "=" + workDir,
-      entryPointBashVar   + "=" + entryPoint,
-      cmdBashVar          + "=" + cmd
-    ), standardVarsFuncName, writeln)
 
-    prepareEnvVariables(config.Env, envFuncName, writeln)
-
-    prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
-    prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
-
-    preparePRootCommand(writeln)
-    preparePrintCommands(writeln)
-    prepareCLI(writeln)
-
-    script.close
     scriptFile.setExecutable(true)
-
-    return OK
   }
 
   def prepareCLI(write: String => Unit) =
@@ -254,10 +256,11 @@ object Proot {
   def preparePRootCommand(write: String => Unit) = {
     write(
       s"""function $runPRootFuncName {
+         |  PROOT=`which $$1`
          |  $envFuncName
          |  $standardVarsFuncName
          |  ${assembleCommandParts(
-              "$1", // calling PRoot
+              "$PROOT", // calling PRoot
               "-r $2", // setting guest rootfs
               "-w $" + workdirBashVAR, // setting working directory
               //       "$3", // user additional PRoot options
@@ -346,26 +349,31 @@ object Proot {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty) = {
+
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
     val rootFSPath = path + rootfsName
-
-    generatePRootScript(path, image.configurationData)
 
     val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
     val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
 
     val commandArgs = if(command.isEmpty) image.command else command
 
-
-    Process(Seq(path + "launcher.sh", "run", proot, rootFSPath, s"$bindArgs $workDirectoryArgs --kill-on-exit --netcoop") ++ commandArgs, None, extraEnv = environmentVariables: _*) !!
+    Process(
+      Seq(
+        path + launchScriptName,
+        "run",
+        proot,
+        rootFSPath,
+        s"$bindArgs $workDirectoryArgs --kill-on-exit --netcoop") ++ commandArgs, None, extraEnv = environmentVariables: _*) !!
   }
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
     val rooFSPath = workDirectory.toScala / rootfsName
     val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, rooFSPath.toJava))
     ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)
+    generatePRootScript((workDirectory.toScala / launchScriptName).toJava, preparedImage.configurationData)
     BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 

@@ -51,10 +51,9 @@ object ImageBuilder {
         val manifestContent = BFile(filePath + "manifest.json").contentAsString
         val manifestData: ManifestData = harvestManifestData(manifestContent)
         val configurationData: ConfigurationData = manifestData.Config match {
-          case Some(conf) => {
+          case Some(conf) =>
             val configContent = BFile(filePath + conf).contentAsString
             harvestConfigData(configContent)
-          }
           case _ => ConfigurationData(None,None,None,None,None, None, None)
         }
         PreparedImage(savedDockerImage.file, manifestData, configurationData, savedDockerImage.command)

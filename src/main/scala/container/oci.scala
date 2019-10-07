@@ -40,20 +40,20 @@ object OCI {
   case class EmptyObject()
 
   case class ManifestData(
-       Config: Option[String],
-       RepoTags: List[String],
-       Layers: List[String]
-       )
+    Config: Option[String],
+    RepoTags: List[String],
+    Layers: List[String])
+
   implicit val ManifestDecoder: Decoder[ManifestData] = deriveDecoder
 
   case class ConfigurationData(
-                                Cmd: Option[List[String]],
-                                Entrypoint: Option[List[String]],
-                                Env: Option[List[String]],
-                                ExposedPorts: Option[Map[String, String]], //EmptyObject]],
-                                User: Option[String],
-                                Volumes: Option[Map[String, String]], //EmptyObject]],
-                                WorkingDir: Option[String]
+    Cmd: Option[List[String]],
+    Entrypoint: Option[List[String]],
+    Env: Option[List[String]],
+    ExposedPorts: Option[Map[String, String]], //EmptyObject]],
+    User: Option[String],
+    Volumes: Option[Map[String, String]], //EmptyObject]],
+    WorkingDir: Option[String]
        )
   implicit val ConfigurationDataDecoder: Decoder[ConfigurationData] = deriveDecoder
 
@@ -65,17 +65,22 @@ object OCI {
     }
     
     def harvestManifestData(manifestRaw: String) = {
-      val manifest = decode[ManifestData](manifestRaw.substring(1, manifestRaw.length - 1))
+      val manifest = decode[List[ManifestData]](manifestRaw)
+
       manifest match {
-        case Right(m) => m
+        case Right(m) => m.head
         case Left(error)=> throw error
       }
     }
 
     def harvestConfigData(configRaw: String) = {
-      val config = decode[ConfigurationData](configRaw)
-      config match {
-        case Right(c) => c
+      case class ConfigFile(config: Option[ConfigurationData])
+      implicit val ConfigurationFileDecoder: Decoder[ConfigFile] = deriveDecoder
+
+      val config = decode[ConfigFile](configRaw)
+
+      config.toOption.flatMap(_.config) match {
+        case Some(c) => c
         case _ => throw InvalidConfigData(configRaw)
       }
     }
