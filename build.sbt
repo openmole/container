@@ -4,7 +4,7 @@ name := "container"
 organization := "org.openmole"
 
 libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.6"
-libraryDependencies += "org.typelevel"  %% "squants"  % "1.3.0"
+libraryDependencies += "org.typelevel"  %% "squants"  % "1.5.0"
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
@@ -30,7 +30,7 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.fu
 
 publishMavenStyle in ThisBuild := true
 publishArtifact in Test in ThisBuild := false
-publishArtifact := false
+//publishArtifact := false
 pomIncludeRepository in ThisBuild := { _ => false }
 
 publishTo in ThisBuild := sonatypePublishToBundle.value
