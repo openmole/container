@@ -359,7 +359,7 @@ object Proot {
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
     val rooFSPath = workDirectory.toScala / rootfsName
-    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, rooFSPath.toJava))
+    val preparedImage = ImageBuilder.prepareImage(image) //.extractImage(image, rooFSPath.toJava))
     ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)
     BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }

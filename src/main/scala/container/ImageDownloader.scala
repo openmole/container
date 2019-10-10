@@ -49,7 +49,7 @@ object ImageDownloader {
     ("docker pull " + name).!!
     val file = BFile(fileName).createFileIfNotExists()
     ("docker save -o " + fileName + " " + name).!!
-    SavedImage(dockerImage.imageName, file.toJava, command = dockerImage.command)
+    SavedImage(file.toJava) //, command = dockerImage.command)
   }
 
   def getManifestAsString(layersHash: List[String], name: String, tag: String, configName: String): String = {
@@ -185,7 +185,7 @@ object ImageDownloader {
         val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
         (imageDirectory / "manifest.json") write manifestString
 
-        SavedImage(dockerImage.imageName, imageDirectory.toJava)
+        SavedImage(imageDirectory.toJava)
       case _ => throw ImageNotFound(dockerImage)
     }
   }

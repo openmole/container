@@ -21,6 +21,7 @@ import org.apache.commons.compress.archivers.tar._
 import java.io.{ BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException }
 import java.nio.file.{ Files, LinkOption, Path, Paths, StandardCopyOption }
 import java.util
+import java.util.zip.GZIPInputStream
 
 import collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
@@ -95,7 +96,7 @@ object Tar {
     } finally tos.close()
   }
 
-  def extract(archive: File, directory: File, overwrite: Boolean = false) = {
+  def extract(archive: File, directory: File, overwrite: Boolean = false, compressed: Boolean = false) = {
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, m: Int) = {
       val f = file.toRealPath().toFile
@@ -104,7 +105,10 @@ object Tar {
       f.setExecutable((m & EXEC_MODE) != 0)
     }
 
-    val tis = new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive)))
+    val tis =
+      if (!compressed) new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive)))
+      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive))))
+
     try {
       if (!directory.exists()) directory.mkdirs()
       if (!Files.isDirectory(directory.toPath)) throw new IOException(directory.toString + " is not a directory.")

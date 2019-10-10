@@ -27,33 +27,34 @@ object Docker {
 
   case class BuiltDockerImage(
     file: File,
-    imageName: String,
+    imageId: String,
     //   configurationData: ConfigurationData,
     command: Seq[String] = Seq())
 
   def build(image: SavedImage, archive: File, dockerCommand: String = "docker"): BuiltDockerImage = {
-    if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
+    //if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
     //val path = image.file.toScala.pathAsString
     //BFile(path + "/manifest.json").delete()
     Tar.archive(image.file, archive)
     checkImageFile(image.file)
 
-    val imageName = UUID.randomUUID().toString
+    val imageId = UUID.randomUUID().toString
 
     val file = archive.getAbsolutePath
 
-    (s"$dockerCommand load -i $file").!!
-    (s"$dockerCommand tag ${image.imageName} $imageName").!!
+    val out = (s"$dockerCommand load -i $file").!!
+    val name = out.split("\n").head.split(":").drop(1).mkString(":").trim
+    (s"$dockerCommand tag ${name} $imageId").!!
 
-    BuiltDockerImage(archive, imageName, image.command)
+    BuiltDockerImage(archive, imageId, image.command)
   }
 
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
-    Seq(dockerCommand, "run", "--name", image.imageName, image.imageName) ++ command.getOrElse(image.command) !!
+    Seq(dockerCommand, "run", "--name", image.imageId, image.imageId) ++ command.getOrElse(image.command) !!
 
   def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
-    (s"$dockerCommand rm ${image.imageName}").!!
-    (s"$dockerCommand rmi ${image.imageName}").!!
+    (s"$dockerCommand rm ${image.imageId}").!!
+    (s"$dockerCommand rmi ${image.imageId}").!!
     image.file.delete()
   }
 

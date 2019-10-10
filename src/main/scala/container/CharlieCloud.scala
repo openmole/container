@@ -39,7 +39,7 @@ object CharlieCloud {
   }
 
   def buildImage(image: SavedImage, workDirectory: File): BuiltCharlieCloudImage = {
-    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, workDirectory))
+    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image.file, workDirectory))
     ImageBuilder.buildImage(preparedImage, workDirectory)
     BuiltCharlieCloudImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }

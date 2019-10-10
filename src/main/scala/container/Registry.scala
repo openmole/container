@@ -74,9 +74,7 @@ case class RegistryImage(
   command: Seq[String] = Seq())
 
 case class SavedImage(
-  imageName: String,
   file: File,
-  compressed: Boolean = false,
   command: Seq[String] = Seq())
 
 case class PreparedImage(

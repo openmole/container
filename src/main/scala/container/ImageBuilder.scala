@@ -29,15 +29,12 @@ object ImageBuilder {
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
   val rootfsName = "rootfs"
 
-  def extractImage(savedDockerImage: SavedImage, workDirectory: File): SavedImage = {
-    checkImageFile(savedDockerImage.file)
-    if (!savedDockerImage.file.isDirectory) {
-      if (!isAnArchive(savedDockerImage.file.getAbsolutePath)) throw InvalidImage(savedDockerImage.file)
-      val directory = workDirectory
-      workDirectory.mkdirs()
-      Tar.extract(savedDockerImage.file, directory)
-      SavedImage(savedDockerImage.imageName, directory, false, savedDockerImage.command)
-    } else savedDockerImage
+  def extractImage(file: File, workDirectory: File, compressed: Boolean = false): SavedImage = {
+    if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
+    val directory = workDirectory
+    workDirectory.mkdirs()
+    Tar.extract(file, directory, compressed = compressed)
+    SavedImage(directory)
   }
 
   /**
@@ -70,13 +67,6 @@ object ImageBuilder {
     rootfs.toScala.createDirectoryIfNotExists()
 
     extractLayers(preparedImage, rootfs)
-    //      val layers = preparedImage.manifestData.Layers
-    //
-    //      layers.foreach{
-    //        layerName =>
-    //          Tar.extract((preparedImage.file.toScala / layerName).toJava, rootfsPath.toJava)
-    //          removeWhiteouts(rootfsPath.toJava)
-    //      }
   }
 
   def extractLayers(preparedImage: PreparedImage, destination: File) = {

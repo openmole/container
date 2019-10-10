@@ -23,13 +23,16 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-  val image = RegistryImage("debian")
 
-  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  //File("/tmp/extract").delete(swallowIOExceptions = true)
+  //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
+
+
+  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved =
-    ImageDownloader.downloadContainerImage(image, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+    ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
   print(
@@ -45,6 +48,8 @@ object Test extends App {
   //val built = CharlieCloud.buildImage(saved, File("/tmp/container/").toJava)
   //print(CharlieCloud.execute(File("/tmp/ch-run").toJava, built, Some(Seq("/bin/ls", "/"))))
 
+  //  File("/tmp/extract").delete(swallowIOExceptions = true)
+  //  val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
   //  val build = Docker.build(saved, new java.io.File("/tmp/fake.tar"))
   //  try print(Docker.execute(build, Some(Seq("/bin/ls"))))
   //  finally Docker.clean(build)
