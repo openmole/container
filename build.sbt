@@ -3,13 +3,13 @@ scalaVersion := "2.12.10"
 name := "container"
 organization := "org.openmole"
 
-libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.6"
+libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.10"
 libraryDependencies += "org.typelevel"  %% "squants"  % "1.5.0"
-libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
+//libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
 
-libraryDependencies += "org.apache.commons" % "commons-compress" % "1.18"
+libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 
 val circeVersion = "0.9.3"
 
