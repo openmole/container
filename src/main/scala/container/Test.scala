@@ -23,10 +23,8 @@ object Test extends App {
 
   import squants.time.TimeConversions._
 
-
   //File("/tmp/extract").delete(swallowIOExceptions = true)
   //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
-
 
   File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)

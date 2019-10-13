@@ -98,6 +98,7 @@ object ImageDownloader {
     dockerImage: RegistryImage,
     localRepository: File,
     timeout: Time,
+    retry: Option[Int] = None,
     executor: Executor = Executor.sequential,
     proxy: Option[HttpHost] = None): SavedImage = {
     import better.files._
@@ -110,7 +111,9 @@ object ImageDownloader {
     imageDirectory.createDirectoryIfNotExists()
     idsDirectory.createDirectoryIfNotExists()
 
-    manifest(dockerImage, downloadManifest(dockerImage, timeout, proxy = proxy)) match {
+    val retryCount = retry.getOrElse(0)
+
+    manifest(dockerImage, Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy))) match {
       case Right(manifestValue) =>
         val conf = manifestValue.value.history.get
 
@@ -150,7 +153,7 @@ object ImageDownloader {
 
                 (tmpLayerDir / "VERSION").appendLine("1.0")
 
-                downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy)
+                Retry.retry(retryCount)(downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy))
 
                 val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
