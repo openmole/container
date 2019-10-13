@@ -11,7 +11,7 @@ libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
 
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 
-val circeVersion = "0.9.3"
+val circeVersion = "0.12.2"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
