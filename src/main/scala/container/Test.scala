@@ -32,7 +32,7 @@ object Test extends App {
   val saved =
     ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
-  val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
+  val buildProot = ImageBuilder.flattenImage(saved, File("/tmp/container/").toJava)
   /*print(
     Proot.execute(
       buildProot,

@@ -1,3 +1,8 @@
+import java.io.File
+
+import java.io.File
+import container.OCI.ConfigurationData
+
 import scala.sys.process.Process
 
 /*
@@ -17,15 +22,17 @@ import scala.sys.process.Process
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package object container {
-  //  def prepareEnvVariables(maybeArgs: Option[List[String]]) {
-  //    maybeArgs match {
-  //      case Some(args)     =>
-  //        for (arg <- args)
-  //        {
-  //          val s = arg.split("=")
-  //          if (s.length == 2) Process("bash", None, s(0) -> s(1)) !!
-  //        }
-  //      case _              =>
-  //    }
-  //  }
+
+  object FlatImage {
+    val rootfsName = "rootfs"
+  }
+
+  case class FlatImage(
+    file: File,
+    configurationData: ConfigurationData,
+    command: Seq[String] = Seq())
+
+  case class SavedImage(
+    file: File,
+    command: Seq[String] = Seq())
 }

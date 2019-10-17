@@ -73,10 +73,6 @@ case class RegistryImage(
   registry: String = "https://registry-1.docker.io",
   command: Seq[String] = Seq())
 
-case class SavedImage(
-  file: File,
-  command: Seq[String] = Seq())
-
 case class PreparedImage(
   file: File,
   manifestData: ManifestData,

@@ -32,16 +32,10 @@ object CharlieCloud {
     configurationData: ConfigurationData,
     command: Seq[String] = Seq())
 
-  def execute(chRun: File, image: BuiltCharlieCloudImage, command: Option[Seq[String]] = None) = {
+  def execute(chRun: File, image: FlatImage, command: Option[Seq[String]] = None) = {
     checkImageFile(image.file)
-    val file = image.file.getAbsolutePath
+    val file = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
     Seq(chRun.getPath, file) ++ command.getOrElse(image.command) !!
-  }
-
-  def buildImage(image: SavedImage, workDirectory: File): BuiltCharlieCloudImage = {
-    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image.file, workDirectory))
-    ImageBuilder.flattenImage(preparedImage, workDirectory)
-    BuiltCharlieCloudImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 
   def clean(image: BuiltCharlieCloudImage): Unit = {

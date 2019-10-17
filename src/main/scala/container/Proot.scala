@@ -19,7 +19,7 @@ package container
 
 import java.io.{ File, PrintWriter }
 
-import container.ImageBuilder.{ FlatImage, checkImageFile }
+import container.ImageBuilder.{ checkImageFile }
 import container.OCI._
 import container.Status._
 import better.files._
@@ -28,7 +28,6 @@ import scala.sys.process._
 
 object Proot {
 
-  val rootfsName = "rootfs"
   val scriptName = "launcher.sh"
 
   //    def loadImage(imagePath: String): Status = {
@@ -337,7 +336,7 @@ object Proot {
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
-    val rootFSPath = path + rootfsName
+    val rootFSPath = path + FlatImage.rootfsName
 
     val commandLines: Seq[String] = if (commands.isEmpty) Seq(image.command.mkString(" ")) else commands
 
@@ -356,13 +355,6 @@ object Proot {
 
     try script.getAbsolutePath ! logger
     finally script.delete()
-  }
-
-  def buildImage(image: SavedImage, workDirectory: File): FlatImage = {
-    val rooFSPath = workDirectory.toScala / rootfsName
-    val preparedImage = ImageBuilder.prepareImage(image) //.extractImage(image, rooFSPath.toJava))
-    ImageBuilder.flattenImage(preparedImage, rooFSPath.toJava)
-    FlatImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 
 }

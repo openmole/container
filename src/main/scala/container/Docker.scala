@@ -3,7 +3,7 @@ package container
 import java.io.File
 import java.util.UUID
 
-import container.ImageBuilder.{FlatImage, checkImageFile}
+import container.ImageBuilder.{ checkImageFile}
 import scala.sys.process._
 
 /*
@@ -87,7 +87,7 @@ object Docker {
       }
 
     def volumes =
-      (image.file.toScala / Proot.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
+      (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
         f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
       } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
 

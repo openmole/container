@@ -28,12 +28,6 @@ object ImageBuilder {
   case class InvalidImage(file: File) extends Exception
   case class DirectoryFileCollision(file: File) extends Exception
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
-  val rootfsName = "rootfs"
-
-  case class FlatImage(
-    file: File,
-    configurationData: ConfigurationData,
-    command: Seq[String] = Seq())
 
   def extractImage(file: File, workDirectory: File, compressed: Boolean = false): SavedImage = {
     if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
@@ -62,16 +56,24 @@ object ImageBuilder {
     PreparedImage(savedDockerImage.file, manifestData, configurationData, savedDockerImage.command)
   }
 
-  /**
-   * Merge the layers by extracting them in order in a same directory.
-   * Also, delete the whiteout files.
-   * Return a BuiltImage
-   */
-  def flattenImage(preparedImage: PreparedImage, rootfs: File): Unit = {
-    //checkImageFile(preparedImage.file)
-    //val directoryPath = workDirectory.getAbsolutePath + "/"
-    rootfs.toScala.createDirectoryIfNotExists()
-    extractLayers(preparedImage, rootfs)
+  def flattenImage(image: SavedImage, workDirectory: File): FlatImage = {
+    val rooFSPath = workDirectory.toScala / FlatImage.rootfsName
+    val preparedImage = ImageBuilder.prepareImage(image) //.extractImage(image, rooFSPath.toJava))
+
+    /**
+     * Merge the layers by extracting them in order in a same directory.
+     * Also, delete the whiteout files.
+     * Return a BuiltImage
+     */
+    def flattenPreparedImage(preparedImage: PreparedImage, rootfs: File): Unit = {
+      //checkImageFile(preparedImage.file)
+      //val directoryPath = workDirectory.getAbsolutePath + "/"
+      rootfs.toScala.createDirectoryIfNotExists()
+      extractLayers(preparedImage, rootfs)
+    }
+
+    flattenPreparedImage(preparedImage, rooFSPath.toJava)
+    FlatImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 
   def extractLayers(preparedImage: PreparedImage, destination: File) = {
