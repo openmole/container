@@ -23,6 +23,7 @@ import java.util.concurrent.{ ExecutorService, Executors, ThreadFactory }
 import better.files.{ File => BFile }
 import container.DockerMetadata._
 import container.Registry._
+import container.tool.lock
 import io.circe._
 import io.circe.parser._
 import org.apache.http.HttpHost

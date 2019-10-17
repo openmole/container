@@ -4,6 +4,7 @@ import java.io.File
 import java.util.UUID
 
 import container.ImageBuilder.checkImageFile
+import container.Proot.BuiltPRootImage
 
 import scala.sys.process._
 
@@ -50,10 +51,68 @@ object Docker {
   }
 
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
-    Seq(dockerCommand, "run", "--name", image.imageId, image.imageId) ++ command.getOrElse(image.command) !!
+    Seq(dockerCommand, "run", "--rm", "--name", image.imageId, image.imageId) ++ command.getOrElse(image.command) !!
+
+  def executeProotImage(
+    image: BuiltPRootImage,
+    tmpDirectory: File,
+    command: Seq[String] = Seq.empty,
+    dockerCommand: String = "docker",
+    bind: Seq[(String, String)] = Vector.empty,
+    workDirectory: Option[String] = None,
+    environmentVariables: Seq[(String, String)] = Vector.empty,
+    logger: ProcessLogger = tool.outputLogger) = {
+    import better.files._
+
+    val id = UUID.randomUUID().toString
+
+    val buildDirectory = tmpDirectory.toScala / id
+    buildDirectory.createDirectoryIfNotExists(createParents = true)
+
+     (buildDirectory / ".empty").createFile()
+
+    (buildDirectory / "Dockerfile").writeText(
+      """
+        |FROM scratch
+        |COPY ./.empty /
+        |""".stripMargin)
+
+    Seq("docker", "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !!
+
+    def variables =
+      image.configurationData.Env.getOrElse(Seq.empty).flatMap { e =>
+        val name = e.takeWhile(_ != '=')
+        val value = e.dropWhile(_ != '=').drop(1)
+        Seq("-e", s"""$name:"$value" """)
+      } ++ environmentVariables.flatMap { e =>
+        Seq("-e", s"""${e._1}:"${e._2}" """)
+      }
+
+    def volumes =
+      (image.file.toScala / Proot.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
+        f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
+      } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
+
+    val workDirectoryValue = workDirectory.orElse(image.configurationData.WorkingDir).map(w => Seq("-w", w)).getOrElse(Seq.empty)
+    val cmd = if(!command.isEmpty)  command else image.command
+
+    val run =
+      Seq(
+        dockerCommand,
+        "run",
+        "--user",
+        "0",
+        "--rm",
+        "--name",
+        id,
+      ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id) ++ cmd
+
+    try run ! logger
+    finally Seq("docker", "rmi", id) !!
+  }
+
 
   def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
-    (s"$dockerCommand rm ${image.imageId}").!!
     (s"$dockerCommand rmi ${image.imageId}").!!
     image.file.delete()
   }

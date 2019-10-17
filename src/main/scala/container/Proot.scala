@@ -184,7 +184,7 @@ object Proot {
     workDirectory: Option[String],
     bind: Seq[(String, String)],
     environmentVariables: Seq[(String, String)],
-    commandLine: String) = {
+    commandLines: Seq[String]) = {
 
     //        val config = configInit match {
     //            case Some(conf) => conf
@@ -238,7 +238,7 @@ object Proot {
         workDirectory = workDirectory,
         bind = bind,
         environmentVariables = environmentVariables,
-        commandLine = commandLine)
+        commandLines = commandLines)
       prepareCLI(writeln)
     }
 
@@ -255,7 +255,7 @@ object Proot {
     workDirectory: Option[String],
     bind: Seq[(String, String)],
     environmentVariables: Seq[(String, String)],
-    commandLine: String) = {
+    commandLines: Seq[String]) = {
 
     val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
     val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
@@ -268,15 +268,17 @@ object Proot {
          |  $envFuncName
          |  $standardVarsFuncName
          |  ${
-        assembleCommandParts(
-          "$PROOT", // calling PRoot
-          "--kill-on-exit",
-          "--netcoop",
-          s"-r $rootFS", // setting guest rootfs
-          workDirectoryArgs, // + workdirBashVAR, // setting working directory,
-          bindArgs,
-          commandLine // user inputs for the program
-        )
+        commandLines.map { commandLine =>
+          assembleCommandParts(
+            "$PROOT", // calling PRoot
+            "--kill-on-exit",
+            "--netcoop",
+            s"-r $rootFS", // setting guest rootfs
+            workDirectoryArgs, // + workdirBashVAR, // setting working directory,
+            bindArgs,
+            commandLine // user inputs for the program
+          )
+        }.mkString("\n")
       }
          |}
          |""".stripMargin)
@@ -329,31 +331,34 @@ object Proot {
   def execute(
     image: BuiltPRootImage,
     tmpDirectory: File,
-    command: Seq[String] = Vector.empty,
+    commands: Seq[String] = Vector.empty,
     proot: String = "proot",
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
-    environmentVariables: Seq[(String, String)] = Vector.empty) = {
+    environmentVariables: Seq[(String, String)] = Vector.empty,
+    logger: ProcessLogger = tool.outputLogger) = {
 
     checkImageFile(image.file)
 
     val path = image.file.getAbsolutePath + "/"
     val rootFSPath = path + rootfsName
 
-    val commandArgs = if (command.isEmpty) image.command else command
+    val commandLines: Seq[String] = if (commands.isEmpty) Seq(image.command.mkString(" ")) else commands
 
     val script = (tmpDirectory.toScala / launchScriptName).toJava
+    val workDirectoryValue = workDirectory.orElse(image.configurationData.WorkingDir)
+
     generatePRootScript(
       script,
       image.configurationData,
       proot = proot,
       rootFS = rootFSPath,
-      workDirectory = workDirectory,
+      workDirectory = workDirectoryValue,
       bind = bind,
       environmentVariables = environmentVariables,
-      commandLine = commandArgs.mkString(" "))
+      commandLines = commandLines)
 
-    try script.getAbsolutePath !!
+    try script.getAbsolutePath ! logger
     finally script.delete()
   }
 

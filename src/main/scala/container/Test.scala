@@ -26,19 +26,25 @@ object Test extends App {
   //File("/tmp/extract").delete(swallowIOExceptions = true)
   //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
 
-  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
   val saved =
     ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   val buildProot = Proot.buildImage(saved, File("/tmp/container/").toJava)
-  print(
+  /*print(
     Proot.execute(
       buildProot,
       File("/tmp/").toJava,
-      Seq("/bin/echo $TEST"),
-      environmentVariables = Seq("TEST" -> "YOUPI")))
+      Seq("/bin/ls"))
+      */
+
+  Docker.executeProotImage(
+    buildProot,
+    File("/tmp/dock").toJava,
+    Seq("/bin/ls"))
+
   /*,
       bind = Vector("/tmp/youpi" -> "/home/youpi"),
       workDirectory = Some("/home")))*/
