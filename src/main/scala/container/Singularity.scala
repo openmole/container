@@ -47,7 +47,6 @@ object Singularity {
     }
 
     try {
-      println(s"$singularityCommand build ${archive.getAbsolutePath} docker-archive://${tarArchive.getAbsolutePath}")
       (s"$singularityCommand build ${archive.getAbsolutePath} docker-archive://${tarArchive.getAbsolutePath}") !!
 
       BuiltSingularityImage(archive, image.command)

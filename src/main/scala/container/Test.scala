@@ -40,7 +40,7 @@ object Test extends App {
       Seq("/bin/ls"))
       */
 
-  Docker.executeProotImage(
+  Docker.executeFlatImage(
     buildProot,
     File("/tmp/dock").toJava,
     Seq("/bin/ls"))

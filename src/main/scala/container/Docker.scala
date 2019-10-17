@@ -3,9 +3,7 @@ package container
 import java.io.File
 import java.util.UUID
 
-import container.ImageBuilder.checkImageFile
-import container.Proot.BuiltPRootImage
-
+import container.ImageBuilder.{FlatImage, checkImageFile}
 import scala.sys.process._
 
 /*
@@ -53,8 +51,8 @@ object Docker {
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
     Seq(dockerCommand, "run", "--rm", "--name", image.imageId, image.imageId) ++ command.getOrElse(image.command) !!
 
-  def executeProotImage(
-    image: BuiltPRootImage,
+  def executeFlatImage(
+    image: FlatImage,
     tmpDirectory: File,
     command: Seq[String] = Seq.empty,
     dockerCommand: String = "docker",

@@ -18,6 +18,7 @@
 package container
 
 import java.io.File
+
 import better.files.{ File => BFile, _ }
 import container.Extractor._
 import container.OCI._
@@ -28,6 +29,11 @@ object ImageBuilder {
   case class DirectoryFileCollision(file: File) extends Exception
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
   val rootfsName = "rootfs"
+
+  case class FlatImage(
+    file: File,
+    configurationData: ConfigurationData,
+    command: Seq[String] = Seq())
 
   def extractImage(file: File, workDirectory: File, compressed: Boolean = false): SavedImage = {
     if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
@@ -61,11 +67,10 @@ object ImageBuilder {
    * Also, delete the whiteout files.
    * Return a BuiltImage
    */
-  def buildImage(preparedImage: PreparedImage, rootfs: File): Unit = {
+  def flattenImage(preparedImage: PreparedImage, rootfs: File): Unit = {
     //checkImageFile(preparedImage.file)
     //val directoryPath = workDirectory.getAbsolutePath + "/"
     rootfs.toScala.createDirectoryIfNotExists()
-
     extractLayers(preparedImage, rootfs)
   }
 

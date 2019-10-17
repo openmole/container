@@ -19,18 +19,14 @@ package container
 
 import java.io.{ File, PrintWriter }
 
-import container.ImageBuilder.checkImageFile
+import container.ImageBuilder.{ FlatImage, checkImageFile }
 import container.OCI._
 import container.Status._
 import better.files._
+
 import scala.sys.process._
 
 object Proot {
-
-  case class BuiltPRootImage(
-    file: File,
-    configurationData: ConfigurationData,
-    command: Seq[String] = Seq())
 
   val rootfsName = "rootfs"
   val scriptName = "launcher.sh"
@@ -329,7 +325,7 @@ object Proot {
   }
 
   def execute(
-    image: BuiltPRootImage,
+    image: FlatImage,
     tmpDirectory: File,
     commands: Seq[String] = Vector.empty,
     proot: String = "proot",
@@ -362,11 +358,11 @@ object Proot {
     finally script.delete()
   }
 
-  def buildImage(image: SavedImage, workDirectory: File): BuiltPRootImage = {
+  def buildImage(image: SavedImage, workDirectory: File): FlatImage = {
     val rooFSPath = workDirectory.toScala / rootfsName
     val preparedImage = ImageBuilder.prepareImage(image) //.extractImage(image, rooFSPath.toJava))
-    ImageBuilder.buildImage(preparedImage, rooFSPath.toJava)
-    BuiltPRootImage(workDirectory, preparedImage.configurationData, preparedImage.command)
+    ImageBuilder.flattenImage(preparedImage, rooFSPath.toJava)
+    FlatImage(workDirectory, preparedImage.configurationData, preparedImage.command)
   }
 
 }
