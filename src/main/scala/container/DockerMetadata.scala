@@ -49,6 +49,7 @@ object DockerMetadata {
     empty_layer: Option[Boolean],
     author: Option[String],
     comment: Option[String])
+
   implicit val HistoryEntryDecoder: Decoder[HistoryEntry] = new Decoder[HistoryEntry] {
     final def apply(cursor: HCursor): Decoder.Result[HistoryEntry] = {
       val created = cursor.get[String]("created").getOrElse("")

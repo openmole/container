@@ -96,7 +96,7 @@ object Tar {
     } finally tos.close()
   }
 
-  def extract(archive: File, directory: File, overwrite: Boolean = false, compressed: Boolean = false) = {
+  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false) = {
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, m: Int) = {
       val f = file.toRealPath().toFile
@@ -125,8 +125,11 @@ object Tar {
             Files.createDirectories(dest.getParent)
 
             // has the entry been marked as a symlink in the archive?
-            if (!e.getLinkName.isEmpty) Files.createSymbolicLink(dest, Paths.get(e.getLinkName))
-            // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
+            if (!e.getLinkName.isEmpty) {
+              val link = Paths.get(e.getLinkName)
+              if (Files.isSymbolicLink(dest) && overwrite) dest.toFile.delete()
+              Files.createSymbolicLink(dest, link)
+            } // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
             else {
               Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
               setMode(dest, e.getMode)
