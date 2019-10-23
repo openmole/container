@@ -45,7 +45,7 @@ object Docker {
     val name = out.split("\n").head.split(":").drop(1).mkString(":").trim
     (s"$dockerCommand tag ${name} $imageId").!!
 
-    BuiltDockerImage(archive, imageId, image.command)
+    BuiltDockerImage(archive, imageId)
   }
 
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
@@ -78,7 +78,7 @@ object Docker {
     Seq("docker", "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !!
 
     def variables =
-      image.configurationData.Env.getOrElse(Seq.empty).flatMap { e =>
+      image.env.getOrElse(Seq.empty).flatMap { e =>
         val name = e.takeWhile(_ != '=')
         val value = e.dropWhile(_ != '=').drop(1)
         Seq("-e", s"""$name:"$value" """)
@@ -91,7 +91,7 @@ object Docker {
         f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
       } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
 
-    val workDirectoryValue = workDirectory.orElse(image.configurationData.WorkingDir).map(w => Seq("-w", w)).getOrElse(Seq.empty)
+    val workDirectoryValue = workDirectory.orElse(image.workDirectory).map(w => Seq("-w", w)).getOrElse(Seq.empty)
     val cmd = if(!command.isEmpty)  command else image.command
 
     val run =

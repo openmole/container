@@ -73,12 +73,6 @@ case class RegistryImage(
   registry: String = "https://registry-1.docker.io",
   command: Seq[String] = Seq())
 
-case class PreparedImage(
-  file: File,
-  manifestData: ManifestData,
-  configurationData: ConfigurationData,
-  command: Seq[String] = Seq())
-
 object Stream {
   def copy(inputStream: InputStream, outputStream: OutputStream) = {
     val DefaultBufferSize = 16 * 1024
@@ -227,6 +221,11 @@ object Registry {
   def decodeConfig(configContent: String) = decode[ImageJSON](configContent).toTry
   def decodeTopLevelManifest(manifestContent: String) = decode[List[TopLevelImageManifest]](manifestContent).map(_.head).toTry
   def decodeManifest(manifestContent: String) = decode[ImageManifestV2Schema1](manifestContent).toTry
+
+  object Config {
+    def workDirectory(config: ImageJSON) = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)
+    def env(config: ImageJSON) = config.config.flatMap(_.Env) orElse config.container_config.flatMap(_.Env)
+  }
 
   def layers(manifest: ImageManifestV2Schema1): Seq[Layer] =
     for {

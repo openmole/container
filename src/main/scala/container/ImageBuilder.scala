@@ -33,63 +33,55 @@ object ImageBuilder {
     if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
     extractDirectory.mkdirs()
     Tar.extract(file, extractDirectory, compressed = compressed)
-
-    val manifest = Registry.decodeTopLevelManifest((extractDirectory.toScala / "manifest.json").contentAsString).get
-    val config = Registry.decodeConfig(extractDirectory.toScala / manifest.Config contentAsString).get
-    val workDirectory = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)
-
-    SavedImage(extractDirectory, workDirectory = workDirectory)
+    SavedImage(extractDirectory)
   }
 
-  /**
-   * Retrieve metadata (layer ids, env variables, volumes, ports, commands)
-   * from the manifest and configuration files.
-   * Return a PreparedImage with Manifest an Config data
-   */
-  def prepareImage(savedDockerImage: SavedImage): PreparedImage = {
-    checkImageFile(savedDockerImage.file)
-    val filePath = savedDockerImage.file.getAbsolutePath + "/"
-    val manifestContent = BFile(filePath + "manifest.json").contentAsString
-    val manifestData: ManifestData = harvestManifestData(manifestContent)
-    val configurationData: ConfigurationData = manifestData.Config match {
-      case Some(conf) =>
-        val configContent = BFile(filePath + conf).contentAsString
-        harvestConfigData(configContent)
-      case _ => ConfigurationData(None, None, None, None, None, None, None)
+  def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage = {
+    //    case class PreparedImage(
+    //      file: File,
+    //      manifestData: ManifestData,
+    //      configurationData: ConfigurationData,
+    //      command: Seq[String] = Seq())
+
+    //    /**
+    //     * Retrieve metadata (layer ids, env variables, volumes, ports, commands)
+    //     * from the manifest and configuration files.
+    //     * Return a PreparedImage with Manifest an Config data
+    //     */
+    //    def prepareImage(savedDockerImage: SavedImage): PreparedImage = {
+    //      //checkImageFile(savedDockerImage.file)
+    //      val filePath = savedDockerImage.file.getAbsolutePath + "/"
+    //      val manifestContent = BFile(filePath + "manifest.json").contentAsString
+    //      val manifestData: ManifestData = harvestManifestData(manifestContent)
+    //      val configurationData: ConfigurationData = manifestData.Config match {
+    //        case Some(conf) =>
+    //          val configContent = BFile(filePath + conf).contentAsString
+    //          harvestConfigData(configContent)
+    //        case _ => ConfigurationData(None, None, None, None, None, None, None)
+    //      }
+    //      PreparedImage(savedDockerImage.file, manifestData, configurationData, savedDockerImage.command)
+    //    }
+
+    def extractLayers(savedImage: SavedImage, layers: Vector[String], destination: File) = {
+      destination.toScala.createDirectoryIfNotExists()
+
+      layers.foreach {
+        layerName =>
+          Tar.extract((savedImage.file.toScala / layerName).toJava, destination)
+          removeWhiteouts(destination)
+      }
     }
-    PreparedImage(savedDockerImage.file, manifestData, configurationData, savedDockerImage.command)
-  }
 
-  def flattenImage(image: SavedImage, workDirectory: File): FlatImage = {
-    val rooFSPath = workDirectory.toScala / FlatImage.rootfsName
-    val preparedImage = ImageBuilder.prepareImage(image) //.extractImage(image, rooFSPath.toJava))
+    val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
+    val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
 
-    /**
-     * Merge the layers by extracting them in order in a same directory.
-     * Also, delete the whiteout files.
-     * Return a BuiltImage
-     */
-    def flattenPreparedImage(preparedImage: PreparedImage, rootfs: File): Unit = {
-      //checkImageFile(preparedImage.file)
-      //val directoryPath = workDirectory.getAbsolutePath + "/"
-      rootfs.toScala.createDirectoryIfNotExists()
-      extractLayers(preparedImage, rootfs)
-    }
+    val rootfs = workDirectory.toScala / FlatImage.rootfsName
+    extractLayers(image, manifest.Layers, rootfs.toJava)
 
-    flattenPreparedImage(preparedImage, rooFSPath.toJava)
-    FlatImage(workDirectory, preparedImage.configurationData, preparedImage.command)
-  }
-
-  def extractLayers(preparedImage: PreparedImage, destination: File) = {
-    destination.toScala.createDirectoryIfNotExists()
-
-    val layers = preparedImage.manifestData.Layers
-
-    layers.foreach {
-      layerName =>
-        Tar.extract((preparedImage.file.toScala / layerName).toJava, destination)
-        removeWhiteouts(destination)
-    }
+    FlatImage(
+      file = workDirectory,
+      workDirectory = Registry.Config.workDirectory(config),
+      env = Registry.Config.env(config))
   }
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)

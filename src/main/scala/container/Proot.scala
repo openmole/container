@@ -171,13 +171,58 @@ object Proot {
   val cmdBashVar = bashVarPrefix + "CMD"
   val launchScriptName = "launch.sh"
 
+  object Script {
+    //    def prepareVariables(args: Seq[String], functionName: String, write: String => Unit) = {
+    //      write("function " + functionName + " {")
+    //      for (arg <- args) write("\t" + addQuoteToRightSideOfEquality(arg))
+    //      write("}\n")
+    //    }
+
+    def prepareEnvVariables(maybeArgs: Option[Seq[String]], functionName: String, write: String => Unit) = {
+      write("function " + functionName + " {")
+      maybeArgs match {
+        case Some(args) => {
+          for (arg <- args)
+            write("\texport " + addQuoteToRightSideOfEquality(arg))
+        }
+        case _ => write("\t:")
+      }
+      write("}\n")
+    }
+
+    def prepareMapInfo(maybeMap: Option[Map[String, String]], title: String, functionName: String, write: String => Unit) = {
+      write("function " + functionName + " {")
+      write("\techo \"" + title + ":\"")
+      maybeMap match {
+        case Some(map) => for ((variable, _) <- map) write("\techo \"\t" + variable + "\"")
+        case _ =>
+      }
+      write("}\n")
+    }
+
+    def assembleCommandParts(args: String*): String = {
+      var command = ""
+      for (arg <- args) command += arg + " "
+      command
+    }
+
+    def assembleCommandParts(args: List[String]): String = assembleCommandParts(args: _*)
+
+    def addQuoteToRightSideOfEquality(s: String) = {
+      s.split('=') match {
+        case Array(left, right) => left + "=\"" + right + "\""
+        case _ => s
+      }
+    }
+  }
+
   def generatePRootScript(
     scriptFile: java.io.File,
-    config: ConfigurationData,
     proot: String,
     rootFS: String,
     workDirectory: Option[String],
     bind: Seq[(String, String)],
+    containerEnvironmentVariables: Option[Seq[String]],
     environmentVariables: Seq[(String, String)],
     commandLines: Seq[String]) = {
 
@@ -201,30 +246,32 @@ object Proot {
 
       writeln("#!/usr/bin/env bash\n")
 
-      val workDir = config.WorkingDir match {
-        case Some(s) if !s.isEmpty => s
-        case _ => "/"
-      }
+      //      val workDir = config.WorkingDir match {
+      //        case Some(s) if !s.isEmpty => s
+      //        case _ => "/"
+      //      }
+      //
+      //      val entryPoint = config.Entrypoint match {
+      //        case Some(list) => assembleCommandParts(list)
+      //        case _ => ""
+      //      }
+      //
+      //      val cmd = config.Cmd match {
+      //        case Some(list) => assembleCommandParts(list)
+      //        case _ => ""
+      //      }
 
-      val entryPoint = config.Entrypoint match {
-        case Some(list) => assembleCommandParts(list)
-        case _ => ""
-      }
+      //Script.prepareVariables(environmentVariables.map { case(n, v) => s"$n=$v"}, standardVarsFuncName, writeln)
 
-      val cmd = config.Cmd match {
-        case Some(list) => assembleCommandParts(list)
-        case _ => ""
-      }
-
-      prepareVariables(List(
-        workdirBashVAR + "=" + workDir,
-        entryPointBashVar + "=" + entryPoint,
-        cmdBashVar + "=" + cmd), standardVarsFuncName, writeln)
-
-      prepareEnvVariables(config.Env, envFuncName, writeln)
-
-      prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
-      prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
+      //      prepareVariables(List(
+      //        workdirBashVAR + "=" + workDir,
+      //        entryPointBashVar + "=" + entryPoint,
+      //        cmdBashVar + "=" + cmd), standardVarsFuncName, writeln)
+      //
+      Script.prepareEnvVariables(containerEnvironmentVariables, envFuncName, writeln)
+      //
+      //      prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
+      //      prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
 
       preparePRootCommand(
         writeln,
@@ -252,7 +299,7 @@ object Proot {
     environmentVariables: Seq[(String, String)],
     commandLines: Seq[String]) = {
 
-    val workDirectoryArgs = workDirectory.map(w => s"-w $w").mkString(" ")
+    val workDirectoryArgs = workDirectory.filterNot(_.trim.isEmpty).map(w => s"-w $w").mkString(" ")
     val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
 
     write(
@@ -261,10 +308,9 @@ object Proot {
          |  for i in $$(env | cut -d'=' -f1) ; do unset $$i; done
          |  ${environmentVariables.map { case (n, v) => s"export $n=$v" }.mkString("\n")}
          |  $envFuncName
-         |  $standardVarsFuncName
          |  ${
         commandLines.map { commandLine =>
-          assembleCommandParts(
+          Script.assembleCommandParts(
             "$PROOT", // calling PRoot
             "--kill-on-exit",
             "--netcoop",
@@ -277,50 +323,6 @@ object Proot {
       }
          |}
          |""".stripMargin)
-  }
-
-  def prepareVariables(args: List[String], functionName: String, write: String => Unit) = {
-    write("function " + functionName + " {")
-    for (arg <- args)
-      write("\t" + addQuoteToRightSideOfEquality(arg))
-    write("}\n")
-  }
-
-  def prepareEnvVariables(maybeArgs: Option[List[String]], functionName: String, write: String => Unit) = {
-    write("function " + functionName + " {")
-    maybeArgs match {
-      case Some(args) => {
-        for (arg <- args)
-          write("\texport " + addQuoteToRightSideOfEquality(arg))
-      }
-      case _ => write("\t:")
-    }
-    write("}\n")
-  }
-
-  def prepareMapInfo(maybeMap: Option[Map[String, String]], title: String, functionName: String, write: String => Unit) = {
-    write("function " + functionName + " {")
-    write("\techo \"" + title + ":\"")
-    maybeMap match {
-      case Some(map) => for ((variable, _) <- map) write("\techo \"\t" + variable + "\"")
-      case _ =>
-    }
-    write("}\n")
-  }
-
-  def assembleCommandParts(args: String*): String = {
-    var command = ""
-    for (arg <- args) command += arg + " "
-    command
-  }
-
-  def assembleCommandParts(args: List[String]): String = assembleCommandParts(args: _*)
-
-  def addQuoteToRightSideOfEquality(s: String) = {
-    s.split('=') match {
-      case Array(left, right) => left + "=\"" + right + "\""
-      case _ => s
-    }
   }
 
   def execute(
@@ -341,15 +343,15 @@ object Proot {
     val commandLines: Seq[String] = if (commands.isEmpty) Seq(image.command.mkString(" ")) else commands
 
     val script = (tmpDirectory.toScala / launchScriptName).toJava
-    val workDirectoryValue = workDirectory.orElse(image.configurationData.WorkingDir)
+    val workDirectoryValue = workDirectory.orElse(image.workDirectory)
 
     generatePRootScript(
       script,
-      image.configurationData,
       proot = proot,
       rootFS = rootFSPath,
       workDirectory = workDirectoryValue,
       bind = bind,
+      containerEnvironmentVariables = image.env,
       environmentVariables = environmentVariables,
       commandLines = commandLines)
 

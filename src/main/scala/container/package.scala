@@ -29,11 +29,9 @@ package object container {
 
   case class FlatImage(
     file: File,
-    configurationData: ConfigurationData,
+    workDirectory: Option[String],
+    env: Option[List[String]],
     command: Seq[String] = Seq())
 
-  case class SavedImage(
-    file: File,
-    workDirectory: Option[String] = None,
-    command: Seq[String] = Seq())
+  case class SavedImage(file: File)
 }

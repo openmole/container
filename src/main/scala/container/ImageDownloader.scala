@@ -45,14 +45,14 @@ object ImageDownloader {
     containerConfig: ContainerConf)
   case class ImageNotFound(image: RegistryImage) extends Exception
 
-  def downloadImageWithDocker(dockerImage: RegistryImage): SavedImage = {
-    val name = dockerImage.imageName + ":" + dockerImage.tag
-    val fileName = dockerImage.imageName + ".tar"
-    ("docker pull " + name).!!
-    val file = BFile(fileName).createFileIfNotExists()
-    ("docker save -o " + fileName + " " + name).!!
-    SavedImage(file.toJava) //, command = dockerImage.command)
-  }
+  //  def downloadImageWithDocker(dockerImage: RegistryImage): SavedImage = {
+  //    val name = dockerImage.imageName + ":" + dockerImage.tag
+  //    val fileName = dockerImage.imageName + ".tar"
+  //    ("docker pull " + name).!!
+  //    val file = BFile(fileName).createFileIfNotExists()
+  //    ("docker save -o " + fileName + " " + name).!!
+  //    SavedImage(file.toJava) //, command = dockerImage.command)
+  //  }
 
   def getManifestAsString(layersHash: List[String], name: String, tag: String, configName: String): String = {
     val config = "[{\"Config\":\"" + configName + "\","
@@ -181,7 +181,9 @@ object ImageDownloader {
           }
 
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
-        val configString = getConfigAsString(manifestValue, layersHashMap)
+
+        val imageJSON = v1HistoryToImageJson(manifestValue, layersHashMap)
+        val configString = imageJSONEncoder(imageJSON).toString()
 
         // should it be written each time
         val configName = Hash.sha256(configString) + ".json"

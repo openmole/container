@@ -49,7 +49,7 @@ object Singularity {
     try {
       (s"$singularityCommand build ${archive.getAbsolutePath} docker-archive://${tarArchive.getAbsolutePath}") !!
 
-      BuiltSingularityImage(archive, image.command)
+      BuiltSingularityImage(archive)
     } finally tarArchive.delete()
   }
 
