@@ -224,7 +224,8 @@ object Proot {
     bind: Seq[(String, String)],
     containerEnvironmentVariables: Option[Seq[String]],
     environmentVariables: Seq[(String, String)],
-    commandLines: Seq[String]) = {
+    commandLines: Seq[String],
+    noSeccomp: Boolean) = {
 
     //        val config = configInit match {
     //            case Some(conf) => conf
@@ -273,13 +274,15 @@ object Proot {
       //      prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
       //      prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
 
+      val noSeccompVariable = if (noSeccomp) Seq("PROOT_NO_SECCOMP" -> "1") else Seq()
+
       preparePRootCommand(
         writeln,
         proot,
         rootFS = rootFS,
         workDirectory = workDirectory,
         bind = bind,
-        environmentVariables = environmentVariables,
+        environmentVariables = environmentVariables ++ noSeccompVariable,
         commandLines = commandLines)
       prepareCLI(writeln)
     }
@@ -333,7 +336,8 @@ object Proot {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: ProcessLogger = tool.outputLogger) = {
+    logger: ProcessLogger = tool.outputLogger,
+    noSeccomp: Boolean = false) = {
 
     checkImageFile(image.file)
 
@@ -353,7 +357,8 @@ object Proot {
       bind = bind,
       containerEnvironmentVariables = image.env,
       environmentVariables = environmentVariables,
-      commandLines = commandLines)
+      commandLines = commandLines,
+      noSeccomp = noSeccomp)
 
     try script.getAbsolutePath ! logger
     finally script.delete()
