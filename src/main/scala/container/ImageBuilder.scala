@@ -29,12 +29,16 @@ object ImageBuilder {
   case class DirectoryFileCollision(file: File) extends Exception
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
 
-  def extractImage(file: File, workDirectory: File, compressed: Boolean = false): SavedImage = {
+  def extractImage(file: File, extractDirectory: File, compressed: Boolean = false): SavedImage = {
     if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
-    val directory = workDirectory
-    workDirectory.mkdirs()
-    Tar.extract(file, directory, compressed = compressed)
-    SavedImage(directory)
+    extractDirectory.mkdirs()
+    Tar.extract(file, extractDirectory, compressed = compressed)
+
+    val manifest = Registry.decodeTopLevelManifest((extractDirectory.toScala / "manifest.json").contentAsString).get
+    val config = Registry.decodeConfig(extractDirectory.toScala / manifest.Config contentAsString).get
+    val workDirectory = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)
+
+    SavedImage(extractDirectory, workDirectory = workDirectory)
   }
 
   /**

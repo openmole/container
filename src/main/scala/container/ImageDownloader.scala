@@ -21,6 +21,7 @@ import java.util.UUID
 import java.util.concurrent.{ ExecutorService, Executors, ThreadFactory }
 
 import better.files.{ File => BFile }
+import com.sun.net.httpserver.Authenticator.Success
 import container.DockerMetadata._
 import container.Registry._
 import container.tool.lock
@@ -63,7 +64,7 @@ object ImageDownloader {
     manifest + "\"" + last + "/layer.tar\"]}]"
   }
 
-  def getConfigAsString(manifest: Manifest, layersHash: Map[String, Option[String]]) =
+  def getConfigAsString(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]) =
     imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
 
   def writeManifestFile(path: String, manifest: String): Unit = {
@@ -114,9 +115,9 @@ object ImageDownloader {
 
     val retryCount = retry.getOrElse(0)
 
-    manifest(dockerImage, Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy))) match {
-      case Right(manifestValue) =>
-        val conf = manifestValue.value.history.get
+    decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy))) match {
+      case util.Success(manifestValue) =>
+        val conf = manifestValue.history.get
 
         val layersIDS = {
           val raw = conf.map(_.v1Compatibility)
@@ -137,7 +138,7 @@ object ImageDownloader {
           }
         }
 
-        val layersHash = manifestValue.value.fsLayers.get.map(_.blobSum)
+        val layersHash = manifestValue.fsLayers.get.map(_.blobSum)
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
         val layersMap =

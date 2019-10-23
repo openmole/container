@@ -224,18 +224,15 @@ object Registry {
     content(httpResponse)
   }
 
-  def manifest(image: RegistryImage, manifestContent: String): Either[Err, Manifest] = {
-    val manifestsE = decode[ImageManifestV2Schema1](manifestContent)
-    val manifest = for {
-      manifest ← manifestsE
-    } yield Manifest(manifest, image)
-    manifest.leftMap(err ⇒ Err(err.getMessage))
-  }
+  def decodeConfig(configContent: String) = decode[ImageJSON](configContent).toTry
+  def decodeTopLevelManifest(manifestContent: String) = decode[List[TopLevelImageManifest]](manifestContent).map(_.head).toTry
+  def decodeManifest(manifestContent: String) = decode[ImageManifestV2Schema1](manifestContent).toTry
 
-  def layers(manifest: ImageManifestV2Schema1): Seq[Layer] = for {
-    fsLayers ← manifest.fsLayers.toSeq
-    fsLayer ← fsLayers
-  } yield Layer(fsLayer.blobSum)
+  def layers(manifest: ImageManifestV2Schema1): Seq[Layer] =
+    for {
+      fsLayers ← manifest.fsLayers.toSeq
+      fsLayer ← fsLayers
+    } yield Layer(fsLayer.blobSum)
 
   def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time, proxy: Option[HttpHost]): Unit = {
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""

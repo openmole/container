@@ -34,5 +34,6 @@ package object container {
 
   case class SavedImage(
     file: File,
+    workDirectory: Option[String] = None,
     command: Seq[String] = Seq())
 }
