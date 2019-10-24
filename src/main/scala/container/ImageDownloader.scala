@@ -24,7 +24,7 @@ import better.files.{ File => BFile }
 import com.sun.net.httpserver.Authenticator.Success
 import container.DockerMetadata._
 import container.Registry._
-import container.tool.lock
+import container.tool.{ Retry, lock }
 import io.circe._
 import io.circe.parser._
 import org.apache.http.HttpHost

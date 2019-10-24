@@ -20,8 +20,10 @@ package container
 import container.ImageBuilder.checkImageFile
 import container.OCI.ConfigurationData
 import java.io.File
+
 import scala.sys.process._
 import better.files._
+import container.tool.Tar
 
 object Singularity {
 

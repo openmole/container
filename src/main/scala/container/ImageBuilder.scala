@@ -22,6 +22,7 @@ import java.io.File
 import better.files.{ File => BFile, _ }
 import container.Extractor._
 import container.OCI._
+import container.tool.Tar
 
 object ImageBuilder {
   case class FileNotFound(file: File) extends Exception
@@ -37,31 +38,6 @@ object ImageBuilder {
   }
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage = {
-    //    case class PreparedImage(
-    //      file: File,
-    //      manifestData: ManifestData,
-    //      configurationData: ConfigurationData,
-    //      command: Seq[String] = Seq())
-
-    //    /**
-    //     * Retrieve metadata (layer ids, env variables, volumes, ports, commands)
-    //     * from the manifest and configuration files.
-    //     * Return a PreparedImage with Manifest an Config data
-    //     */
-    //    def prepareImage(savedDockerImage: SavedImage): PreparedImage = {
-    //      //checkImageFile(savedDockerImage.file)
-    //      val filePath = savedDockerImage.file.getAbsolutePath + "/"
-    //      val manifestContent = BFile(filePath + "manifest.json").contentAsString
-    //      val manifestData: ManifestData = harvestManifestData(manifestContent)
-    //      val configurationData: ConfigurationData = manifestData.Config match {
-    //        case Some(conf) =>
-    //          val configContent = BFile(filePath + conf).contentAsString
-    //          harvestConfigData(configContent)
-    //        case _ => ConfigurationData(None, None, None, None, None, None, None)
-    //      }
-    //      PreparedImage(savedDockerImage.file, manifestData, configurationData, savedDockerImage.command)
-    //    }
-
     def extractLayers(savedImage: SavedImage, layers: Vector[String], destination: File) = {
       destination.toScala.createDirectoryIfNotExists()
 
@@ -83,6 +59,12 @@ object ImageBuilder {
       workDirectory = Registry.Config.workDirectory(config),
       env = Registry.Config.env(config))
   }
+
+  def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
+    FlatImage(
+      file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
+      workDirectory = flatImage.workDirectory,
+      env = flatImage.env)
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
 }

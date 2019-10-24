@@ -3,7 +3,9 @@ package container
 import java.io.File
 import java.util.UUID
 
-import container.ImageBuilder.{ checkImageFile}
+import container.ImageBuilder.checkImageFile
+import container.tool.Tar
+
 import scala.sys.process._
 
 /*
