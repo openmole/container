@@ -225,7 +225,8 @@ object Proot {
     containerEnvironmentVariables: Option[Seq[String]],
     environmentVariables: Seq[(String, String)],
     commandLines: Seq[String],
-    noSeccomp: Boolean) = {
+    noSeccomp: Boolean,
+    kernel: Option[String]) = {
 
     //        val config = configInit match {
     //            case Some(conf) => conf
@@ -283,7 +284,8 @@ object Proot {
         workDirectory = workDirectory,
         bind = bind,
         environmentVariables = environmentVariables ++ noSeccompVariable,
-        commandLines = commandLines)
+        commandLines = commandLines,
+        kernel = kernel)
       prepareCLI(writeln)
     }
 
@@ -300,15 +302,17 @@ object Proot {
     workDirectory: Option[String],
     bind: Seq[(String, String)],
     environmentVariables: Seq[(String, String)],
-    commandLines: Seq[String]) = {
+    commandLines: Seq[String],
+    kernel: Option[String]) = {
 
     val workDirectoryArgs = workDirectory.filterNot(_.trim.isEmpty).map(w => s"-w $w").mkString(" ")
     val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
+    val kernelArg = kernel.map(k => s"-k $k").getOrElse("")
 
     write(
       s"""function $runPRootFuncName {
          |  PROOT=`which $proot`
-         |  for i in $$(env | cut -d'=' -f1) ; do unset $$i; done
+         |  for i in $$(env | cut -d'=' -f1) ; do unset "$$i"; done
          |  ${environmentVariables.map { case (n, v) => s"export $n=$v" }.mkString("\n")}
          |  $envFuncName
          |  ${
@@ -317,6 +321,7 @@ object Proot {
             "$PROOT", // calling PRoot
             "--kill-on-exit",
             "--netcoop",
+            kernelArg,
             s"-r $rootFS", // setting guest rootfs
             workDirectoryArgs, // + workdirBashVAR, // setting working directory,
             bindArgs,
@@ -337,7 +342,8 @@ object Proot {
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
     logger: ProcessLogger = tool.outputLogger,
-    noSeccomp: Boolean = false) = {
+    noSeccomp: Boolean = false,
+    kernel: Option[String] = None) = {
 
     checkImageFile(image.file)
 
@@ -358,7 +364,8 @@ object Proot {
       containerEnvironmentVariables = image.env,
       environmentVariables = environmentVariables,
       commandLines = commandLines,
-      noSeccomp = noSeccomp)
+      noSeccomp = noSeccomp,
+      kernel = kernel)
 
     try script.getAbsolutePath ! logger
     finally script.delete()
