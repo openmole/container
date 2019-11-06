@@ -37,6 +37,12 @@ import scala.sys.process._
 
 object ImageDownloader {
 
+  object HttpProxy {
+    def toHost(httpProxy: HttpProxy) = HttpHost.create(httpProxy.uri)
+  }
+
+  case class HttpProxy(uri: String)
+
   case class ContainerConf(cmd: List[String])
   case class Config(
     id: String,
@@ -102,7 +108,7 @@ object ImageDownloader {
     timeout: Time,
     retry: Option[Int] = None,
     executor: Executor = Executor.sequential,
-    proxy: Option[HttpHost] = None): SavedImage = {
+    proxy: Option[HttpProxy] = None): SavedImage = {
     import better.files._
 
     val tmpDirectory = localRepository.toScala / ".tmp"
@@ -115,7 +121,7 @@ object ImageDownloader {
 
     val retryCount = retry.getOrElse(0)
 
-    decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy))) match {
+    decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost)))) match {
       case util.Success(manifestValue) =>
         val conf = manifestValue.history.get
 
@@ -155,7 +161,7 @@ object ImageDownloader {
 
                 (tmpLayerDir / "VERSION").appendLine("1.0")
 
-                Retry.retry(retryCount)(downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy))
+                Retry.retry(retryCount)(downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy.map(HttpProxy.toHost)))
 
                 val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 

@@ -306,7 +306,7 @@ object Proot {
     kernel: Option[String]) = {
 
     val workDirectoryArgs = workDirectory.filterNot(_.trim.isEmpty).map(w => s"-w $w").mkString(" ")
-    val bindArgs = bind.map(b => s"-b ${b._1}:${b._2}").mkString(" ")
+    val bindArgs = bind.map(b => s"""-b '${b._1}:${b._2}'""").mkString(" ")
     val kernelArg = kernel.map(k => s"-k $k").getOrElse("")
 
     write(
