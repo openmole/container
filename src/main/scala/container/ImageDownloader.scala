@@ -111,18 +111,20 @@ object ImageDownloader {
     proxy: Option[HttpProxy] = None): SavedImage = {
     import better.files._
 
-    val tmpDirectory = localRepository.toScala / ".tmp"
-    val imageDirectory = localRepository.toScala / dockerImage.imageName
-    val idsDirectory = imageDirectory / "id"
-
-    tmpDirectory.createDirectoryIfNotExists()
-    imageDirectory.createDirectoryIfNotExists()
-    idsDirectory.createDirectoryIfNotExists()
-
     val retryCount = retry.getOrElse(0)
 
     decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost)))) match {
       case util.Success(manifestValue) =>
+        //val containerId = containerConfig(manifestValue).get.Image.get
+
+        val tmpDirectory = localRepository.toScala / ".tmp"
+        val imageDirectory = localRepository.toScala / dockerImage.imageName / dockerImage.tag
+        val idsDirectory = imageDirectory / "id"
+
+        tmpDirectory.createDirectoryIfNotExists()
+        imageDirectory.createDirectoryIfNotExists()
+        idsDirectory.createDirectoryIfNotExists()
+
         val conf = manifestValue.history.get
 
         val layersIDS = {

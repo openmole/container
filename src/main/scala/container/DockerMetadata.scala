@@ -154,6 +154,11 @@ object DockerMetadata {
   implicit val imageJSONDecoder: Decoder[ImageJSON] = deriveDecoder
   implicit val imageJSONEncoder: Encoder[ImageJSON] = deriveEncoder
 
+  def containerConfig(manifest: ImageManifestV2Schema1) = {
+    val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
+    (rawJsonImage \\ "config").head.as[ContainerConfig].toOption
+  }
+
   import Registry.Manifest
   def v1HistoryToImageJson(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]): ImageJSON = {
     val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
@@ -173,8 +178,7 @@ object DockerMetadata {
     val docker_version = cursor.get[String]("docker_version").toOption
     val container = cursor.get[String]("container").toOption
     val container_config = cursor.get[ContainerConfig]("container_config").toOption
-    ImageJSON(created, author, architecture, os, config, rootfs, Some(history), id, parent, docker_version,
-      container, container_config)
+    ImageJSON(created, author, architecture, os, config, rootfs, Some(history), id, parent, docker_version, container, container_config)
   }
 
   case class Digest(blobSum: String)
