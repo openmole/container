@@ -83,9 +83,8 @@ object Singularity {
           |Bootstrap: scratch
           |""".stripMargin)
 
-      val sif = (buildDirectory / "empty.sif")
-
-      Seq(singularityCommand, "build", "--fakeroot", sif.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
+      val sandbox = (buildDirectory / "empty")
+      Seq(singularityCommand, "build", "--fakeroot", "--sandbox", sandbox.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
 
       def volumes =
         (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
@@ -103,7 +102,9 @@ object Singularity {
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
-      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sif.toJava.getAbsolutePath) ++ command, None, extraEnv = variables: _*) ! logger
+      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath) ++ command, None, extraEnv = variables: _*) ! logger
+
+      // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()
   }
 
