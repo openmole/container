@@ -29,25 +29,30 @@ object Test extends App {
   //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
-  val saved =
-    ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
-  //val saved = ImageBuilder.extractImage(File("/tmp/viablab5.tar").toJava, File("/tmp/extract").toJava)
-  //
+  //val saved = ImageBuilder.extractImage(File("/tmp/viablab3.tar").toJava, File("/tmp/extract").toJava)
+
   val buildProot = ImageBuilder.flattenImage(saved, File("/tmp/container/").toJava)
 
-  Proot.execute(
-    buildProot,
-    File("/tmp/").toJava,
-    commands = Seq("ls"),
-    workDirectory = Some("/tmp"),
-    bind = Seq("/tmp/test" -> "/tmp/test"))
+  //  Proot.execute(
+  //    buildProot,
+  //    File("/tmp/").toJava,
+  //    commands = Seq("ls"),
+  //    workDirectory = Some("/tmp"),
+  //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
   //
   //  Docker.executeFlatImage(
   //    buildProot,
   //    File("/tmp/dock").toJava,
   //    Seq("/bin/ls"))
+
+  Singularity.executeFlatImage(
+    buildProot,
+    File("/tmp/sing").toJava,
+    Seq("/bin/ls"),
+    workDirectory = Some("/usr"))
 
   /*,
       bind = Vector("/tmp/youpi" -> "/home/youpi"),

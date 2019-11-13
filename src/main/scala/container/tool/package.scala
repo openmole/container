@@ -20,4 +20,5 @@ import scala.sys.process.ProcessLogger
  */
 package object tool {
   def outputLogger = ProcessLogger(s => println(s), s => println(s))
+  def nullLogger = ProcessLogger(s => (), s => ())
 }

@@ -20,6 +20,7 @@ package container
 import container.ImageBuilder.checkImageFile
 import container.OCI.ConfigurationData
 import java.io.File
+import java.util.UUID
 
 import scala.sys.process._
 import better.files._
@@ -58,6 +59,52 @@ object Singularity {
   def execute(image: BuiltSingularityImage, command: Option[Seq[String]] = None, singularityCommand: String = "singularity") = {
     val file = image.file.getAbsolutePath
     Seq(singularityCommand, "run", file) ++ command.getOrElse(image.command) !!
+  }
+
+  def executeFlatImage(
+    image: FlatImage,
+    tmpDirectory: File,
+    command: Seq[String] = Seq.empty,
+    singularityCommand: String = "singularity",
+    bind: Seq[(String, String)] = Vector.empty,
+    workDirectory: Option[String] = None,
+    environmentVariables: Seq[(String, String)] = Vector.empty,
+    logger: ProcessLogger = tool.outputLogger) = {
+    import better.files._
+
+    val id = UUID.randomUUID().toString
+
+    val buildDirectory = tmpDirectory.toScala / id
+    buildDirectory.createDirectoryIfNotExists(createParents = true)
+
+    try {
+      (buildDirectory / "empty.def").writeText(
+        """
+          |Bootstrap: scratch
+          |""".stripMargin)
+
+      val sif = (buildDirectory / "empty.sif")
+
+      Seq(singularityCommand, "build", "--fakeroot", sif.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
+
+      def volumes =
+        (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
+          f => Seq("-B", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
+        } ++ (bind ++ Seq(("/proc", "/proc"))).flatMap { b => Seq("-B", s"""${b._1}:${b._2}""") }
+
+      def variables =
+        image.env.getOrElse(Seq.empty).map { e =>
+          val name = e.takeWhile(_ != '=')
+          val value = e.dropWhile(_ != '=').drop(1)
+          (s"SINGULARITY_$name", value)
+        } ++ environmentVariables.map { e =>
+          (s"SINGULARITY_${e._1}", e._2)
+        }
+
+      def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
+
+      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sif.toJava.getAbsolutePath) ++ command, None, extraEnv = variables: _*) ! logger
+    } finally buildDirectory.delete()
   }
 
 }

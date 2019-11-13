@@ -69,46 +69,47 @@ object Docker {
     val buildDirectory = tmpDirectory.toScala / id
     buildDirectory.createDirectoryIfNotExists(createParents = true)
 
-     (buildDirectory / ".empty").createFile()
+    try {
+      (buildDirectory / ".empty").createFile()
+      (buildDirectory / "Dockerfile").writeText(
+        """
+          |FROM scratch
+          |COPY ./.empty /
+          |""".stripMargin)
 
-    (buildDirectory / "Dockerfile").writeText(
-      """
-        |FROM scratch
-        |COPY ./.empty /
-        |""".stripMargin)
+      Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !! logger
 
-    Seq("docker", "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !!
+      def variables =
+        image.env.getOrElse(Seq.empty).flatMap { e =>
+          val name = e.takeWhile(_ != '=')
+          val value = e.dropWhile(_ != '=').drop(1)
+          Seq("-e", s"""$name:"$value" """)
+        } ++ environmentVariables.flatMap { e =>
+          Seq("-e", s"""${e._1}:"${e._2}" """)
+        }
 
-    def variables =
-      image.env.getOrElse(Seq.empty).flatMap { e =>
-        val name = e.takeWhile(_ != '=')
-        val value = e.dropWhile(_ != '=').drop(1)
-        Seq("-e", s"""$name:"$value" """)
-      } ++ environmentVariables.flatMap { e =>
-        Seq("-e", s"""${e._1}:"${e._2}" """)
-      }
+      def volumes =
+        (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
+          f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
+        } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
 
-    def volumes =
-      (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
-        f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
-      } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
+      val workDirectoryValue = workDirectory.orElse(image.workDirectory).map(w => Seq("-w", w)).getOrElse(Seq.empty)
+      val cmd = if (!command.isEmpty) command else image.command
 
-    val workDirectoryValue = workDirectory.orElse(image.workDirectory).map(w => Seq("-w", w)).getOrElse(Seq.empty)
-    val cmd = if(!command.isEmpty)  command else image.command
+      val run =
+        Seq(
+          dockerCommand,
+          "run",
+          "--user",
+          "0",
+          "--rm",
+          "--name",
+          id,
+        ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id) ++ cmd
 
-    val run =
-      Seq(
-        dockerCommand,
-        "run",
-        "--user",
-        "0",
-        "--rm",
-        "--name",
-        id,
-      ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id) ++ cmd
-
-    try run ! logger
-    finally Seq("docker", "rmi", id) !!
+      try run ! logger
+      finally Seq("docker", "rmi", id) !!
+    } finally buildDirectory.delete()
   }
 
 
