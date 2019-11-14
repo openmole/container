@@ -102,7 +102,9 @@ object Singularity {
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
-      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath) ++ command, None, extraEnv = variables: _*) ! logger
+      val cmd = if (command.isEmpty) image.command else command
+
+      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath) ++ cmd, None, extraEnv = variables: _*) ! logger
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()
