@@ -33,23 +33,22 @@ object Test extends App {
 
   //val saved = ImageBuilder.extractImage(File("/tmp/viablab3.tar").toJava, File("/tmp/extract").toJava)
 
-  val buildProot = ImageBuilder.flattenImage(saved, File("/tmp/container/").toJava)
+  val flattenedImage = ImageBuilder.flattenImage(saved, File("/tmp/container/").toJava)
 
   //  Proot.execute(
-  //    buildProot,
+  //    flattenedImage,
   //    File("/tmp/").toJava,
   //    commands = Seq("ls"),
   //    workDirectory = Some("/tmp"),
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
-  //
-  //  Docker.executeFlatImage(
-  //    buildProot,
-  //    File("/tmp/dock").toJava,
-  //    Seq("/bin/ls"))
+  //    Docker.executeFlatImage(
+  //      flattenedImage,
+  //      File("/tmp/dock").toJava,
+  //      Seq("/bin/ls"))
 
   Singularity.executeFlatImage(
-    buildProot,
+    flattenedImage,
     File("/tmp/sing").toJava,
     Seq("/bin/ls"),
     workDirectory = Some("/usr"))

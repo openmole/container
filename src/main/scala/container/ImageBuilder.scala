@@ -57,14 +57,17 @@ object ImageBuilder {
     FlatImage(
       file = workDirectory,
       workDirectory = Registry.Config.workDirectory(config),
-      env = Registry.Config.env(config))
+      env = Registry.Config.env(config),
+      layers = manifest.Layers)
   }
 
   def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
     FlatImage(
       file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
       workDirectory = flatImage.workDirectory,
-      env = flatImage.env)
+      env = flatImage.env,
+      layers = flatImage.layers,
+      command = flatImage.command)
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
 }

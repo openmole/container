@@ -31,6 +31,7 @@ package object container {
     file: File,
     workDirectory: Option[String],
     env: Option[List[String]],
+    layers: Vector[String],
     command: Seq[String] = Seq())
 
   case class SavedImage(file: File)
