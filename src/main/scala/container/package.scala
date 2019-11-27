@@ -32,7 +32,7 @@ package object container {
     workDirectory: Option[String],
     env: Option[List[String]],
     layers: Vector[String],
-    command: Seq[String] = Seq())
+    command: Option[String] = None)
 
   case class SavedImage(file: File)
 }

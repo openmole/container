@@ -64,7 +64,7 @@ object Singularity {
   def executeFlatImage(
     image: FlatImage,
     tmpDirectory: File,
-    command: Seq[String] = Seq.empty,
+    commands: Seq[String] = Seq.empty,
     singularityCommand: String = "singularity",
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
@@ -78,9 +78,19 @@ object Singularity {
     buildDirectory.createDirectoryIfNotExists(createParents = true)
 
     try {
+      val cmd = if (commands.isEmpty) image.command.toSeq else commands
+
+      val runFile = "_run_commands.sh"
+
+      (buildDirectory / runFile).writeText(cmd.mkString("\n"))
+      (buildDirectory / runFile).toJava.setExecutable(true)
+
       (buildDirectory / "empty.def").writeText(
-        """
+        s"""
           |Bootstrap: scratch
+          |
+          |%files
+          |  ${(buildDirectory / runFile).toJava.getAbsolutePath} /$runFile
           |""".stripMargin)
 
       val sandbox = (buildDirectory / "empty")
@@ -102,9 +112,15 @@ object Singularity {
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
-      val cmd = if (command.isEmpty) image.command else command
-
-      Process(Seq(singularityCommand, "exec", "-W", buildDirectory.toJava.getAbsolutePath, "--cleanenv", "--fakeroot", "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath) ++ cmd, None, extraEnv = variables: _*) ! logger
+      Process(
+        Seq(
+          singularityCommand,
+          "exec",
+          "-W",
+          buildDirectory.toJava.getAbsolutePath,
+          "--cleanenv",
+          "--fakeroot",
+          "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath, s"/$runFile"), None, extraEnv = variables: _*) ! logger
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()

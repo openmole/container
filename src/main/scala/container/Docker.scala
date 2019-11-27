@@ -53,65 +53,69 @@ object Docker {
   def execute(image: BuiltDockerImage, command: Option[Seq[String]] = None, dockerCommand: String = "docker") =
     Seq(dockerCommand, "run", "--rm", "--name", image.imageId, image.imageId) ++ command.getOrElse(image.command) !!
 
-  def executeFlatImage(
-    image: FlatImage,
-    tmpDirectory: File,
-    command: Seq[String] = Seq.empty,
-    dockerCommand: String = "docker",
-    bind: Seq[(String, String)] = Vector.empty,
-    workDirectory: Option[String] = None,
-    environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: ProcessLogger = tool.outputLogger) = {
-    import better.files._
+    def executeFlatImage(
+      image: FlatImage,
+      tmpDirectory: File,
+      commands: Seq[String] = Seq.empty,
+      dockerCommand: String = "docker",
+      bind: Seq[(String, String)] = Vector.empty,
+      workDirectory: Option[String] = None,
+      environmentVariables: Seq[(String, String)] = Vector.empty,
+      logger: ProcessLogger = tool.outputLogger) = {
+      import better.files._
 
-    val id = UUID.randomUUID().toString
+      val id = UUID.randomUUID().toString
 
-    val buildDirectory = tmpDirectory.toScala / id
-    buildDirectory.createDirectoryIfNotExists(createParents = true)
+      val buildDirectory = tmpDirectory.toScala / id
+      buildDirectory.createDirectoryIfNotExists(createParents = true)
 
-    try {
-      (buildDirectory / ".empty").createFile()
-      (buildDirectory / "Dockerfile").writeText(
-        """
-          |FROM scratch
-          |COPY ./.empty /
-          |""".stripMargin)
+      try {
+        val cmd = if (!commands.isEmpty) commands else image.command.toSeq
 
-      Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !! logger
+        val runFile = "_run_commands.sh"
+        (buildDirectory / runFile).writeText(cmd.mkString("\n"))
 
-      def variables =
-        image.env.getOrElse(Seq.empty).flatMap { e =>
-          val name = e.takeWhile(_ != '=')
-          val value = e.dropWhile(_ != '=').drop(1)
-          Seq("-e", s"""$name:"$value" """)
-        } ++ environmentVariables.flatMap { e =>
-          Seq("-e", s"""${e._1}:"${e._2}" """)
-        }
+        (buildDirectory / "Dockerfile").writeText(
+          s"""
+            |FROM scratch
+            |COPY ./$runFile /
+            |""".stripMargin)
 
-      def volumes =
-        (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
-          f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
-        } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
+        Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !! logger
 
-      val workDirectoryValue = workDirectory.orElse(image.workDirectory).map(w => Seq("-w", w)).getOrElse(Seq.empty)
-      val cmd = if (!command.isEmpty) command else image.command
+        def variables =
+          image.env.getOrElse(Seq.empty).flatMap { e =>
+            val name = e.takeWhile(_ != '=')
+            val value = e.dropWhile(_ != '=').drop(1)
+            Seq("-e", s"""$name:"$value" """)
+          } ++ environmentVariables.flatMap { e =>
+            Seq("-e", s"""${e._1}:"${e._2}" """)
+          }
 
-      val run =
-        Seq(
-          dockerCommand,
-          "run",
-          "--user",
-          "0",
-          "--rm",
-          "--name",
-          id,
-        ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id) ++ cmd
+        def volumes =
+          (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
+            f => Seq("-v", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
+          } ++ bind.flatMap { b => Seq("-v", s"""${b._1}:"${b._2}" """) }
 
-      try run ! logger
-      finally Seq("docker", "rmi", id) !!
-    } finally buildDirectory.delete()
-  }
+        val workDirectoryValue = workDirectory.orElse(image.workDirectory).map(w => Seq("-w", w)).getOrElse(Seq.empty)
 
+        val run =
+          Seq(
+            dockerCommand,
+            "run",
+            "--user",
+            "0",
+            "--rm",
+            "--name",
+            id,
+          ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id, "/bin/sh", s"/$runFile")
+
+        println(run.mkString(" "))
+
+        try run ! logger
+        finally Seq("docker", "rmi", id) !!
+      } finally buildDirectory.delete()
+    }
 
   def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
     (s"$dockerCommand rmi ${image.imageId}").!!
