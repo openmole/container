@@ -42,16 +42,16 @@ object Test extends App {
   //    workDirectory = Some("/tmp"),
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
-  Docker.executeFlatImage(
-    flattenedImage,
-    File("/tmp/dock").toJava,
-    Seq("/bin/ls", "/bin/ls -l"))
-
-  //  Singularity.executeFlatImage(
+  //  Docker.executeFlatImage(
   //    flattenedImage,
-  //    File("/tmp/sing").toJava,
-  //    Seq("/bin/ls", "/bin/ls -l"),
-  //    workDirectory = Some("/usr"))
+  //    File("/tmp/dock").toJava,
+  //    Seq("/bin/ls", "/bin/ls -l"))
+
+  Singularity.executeFlatImage(
+    flattenedImage,
+    File("/tmp/sing").toJava,
+    Seq("touch /test", "/bin/ls", "/bin/ls -l"),
+    workDirectory = Some("/"))
 
   /*,
       bind = Vector("/tmp/youpi" -> "/home/youpi"),

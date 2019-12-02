@@ -61,6 +61,34 @@ object Singularity {
     Seq(singularityCommand, "run", file) ++ command.getOrElse(image.command) !!
   }
 
+  def buildSIF(image: FlatImage, sif: File, tmpDirectory: File, singularityCommand: String = "singularity", logger: ProcessLogger = tool.outputLogger) = {
+    import better.files._
+
+    val id = UUID.randomUUID().toString
+
+    val buildDirectory = tmpDirectory.toScala / id
+    buildDirectory.createDirectoryIfNotExists(createParents = true)
+
+    try {
+      def volumes =
+        (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).map {
+          f => s"${f.toJava.getAbsolutePath}" -> s"${f.toJava.getName}"
+        }
+
+      (buildDirectory / "empty.def").writeText(
+        s"""
+           |Bootstrap: scratch
+           |
+           |%files
+           |${volumes.map { v => s"\t ${v._1} ${v._2}" }.mkString("\n")}
+           |""".stripMargin)
+
+      val sandbox = (buildDirectory / "empty")
+      Seq(singularityCommand, "build", "--fakeroot", sandbox.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
+
+    } finally buildDirectory.delete()
+  }
+
   def executeFlatImage(
     image: FlatImage,
     tmpDirectory: File,
@@ -85,22 +113,6 @@ object Singularity {
       (buildDirectory / runFile).writeText(cmd.mkString("\n"))
       (buildDirectory / runFile).toJava.setExecutable(true)
 
-      (buildDirectory / "empty.def").writeText(
-        s"""
-          |Bootstrap: scratch
-          |
-          |%files
-          |  ${(buildDirectory / runFile).toJava.getAbsolutePath} /$runFile
-          |""".stripMargin)
-
-      val sandbox = (buildDirectory / "empty")
-      Seq(singularityCommand, "build", "--fakeroot", "--sandbox", sandbox.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
-
-      def volumes =
-        (image.file.toScala / FlatImage.rootfsName).list.filter(f => !Set("proc", "dev", "run").contains(f.name)).flatMap {
-          f => Seq("-B", s"${f.toJava.getAbsolutePath}:/${f.toJava.getName}")
-        } ++ (bind ++ Seq(("/proc", "/proc"))).flatMap { b => Seq("-B", s"""${b._1}:${b._2}""") }
-
       def variables =
         image.env.getOrElse(Seq.empty).map { e =>
           val name = e.takeWhile(_ != '=')
@@ -112,15 +124,29 @@ object Singularity {
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
+      //      sandbox / "/var/tmp" createDirectories ()
+      //      sandbox / "/tmp" createDirectories ()
+      //      sandbox / "/proc" createDirectories ()
+      //      sandbox / "/dev" createDirectories ()
+      //      sandbox / "/sys" createDirectories ()
+      //      sandbox / "/root" createDirectories ()
+
+      val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
+      (Seq(runFile) ++ bind.unzip._2) foreach { f => new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f).toScala touch () }
+
       Process(
         Seq(
           singularityCommand,
+          "--silent",
           "exec",
-          "-W",
-          buildDirectory.toJava.getAbsolutePath,
-          "--cleanenv",
-          "--fakeroot",
-          "--containall") ++ pwd ++ volumes ++ Seq(sandbox.toJava.getAbsolutePath, s"/$runFile"), None, extraEnv = variables: _*) ! logger
+          "-w") ++
+          pwd ++
+          Seq(
+            "--home", s"$absoluteRootFS/root:/root",
+            "-B", s"$absoluteRootFS/tmp:/tmp",
+            "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
+            Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
+            Seq(absoluteRootFS, "sh", s"/$runFile"), None, extraEnv = variables: _*) ! logger
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()
