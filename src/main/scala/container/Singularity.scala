@@ -124,13 +124,6 @@ object Singularity {
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
-      //      sandbox / "/var/tmp" createDirectories ()
-      //      sandbox / "/tmp" createDirectories ()
-      //      sandbox / "/proc" createDirectories ()
-      //      sandbox / "/dev" createDirectories ()
-      //      sandbox / "/sys" createDirectories ()
-      //      sandbox / "/root" createDirectories ()
-
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
       (Seq(runFile) ++ bind.unzip._2) foreach { f => new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f).toScala touch () }
 
