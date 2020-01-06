@@ -32,7 +32,8 @@ import org.apache.http.impl.client.{ DefaultHttpRequestRetryHandler, HttpClients
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager
 import DockerMetadata._
 import io.circe.syntax._
-import io.circe.generic.extras.auto._
+//import io.circe.generic.extras.auto._
+import io.circe.generic.auto._
 import io.circe.jawn.decode
 import io.circe.parser._
 import squants.time._
