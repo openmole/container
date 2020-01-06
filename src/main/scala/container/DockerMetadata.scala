@@ -20,12 +20,12 @@ package container
 object DockerMetadata {
 
   import io.circe.{ Decoder, Encoder, HCursor, Json }
-  import io.circe.generic.extras.Configuration
+  //import io.circe.generic.extras.Configuration
   import io.circe.parser._
   import io.circe.generic.semiauto._
 
-  implicit val customConfig: Configuration =
-    Configuration.default.withDefaults.withDiscriminator("type")
+  //  implicit val customConfig: Configuration =
+  //    Configuration.default.withDefaults.withDiscriminator("type")
 
   import java.time.LocalDateTime
   import java.time.format.DateTimeFormatter
