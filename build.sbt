@@ -1,5 +1,6 @@
 
-scalaVersion := "2.12.10"
+scalaVersion := "2.13.1"
+crossScalaVersions := Seq("2.12.10", "2.13.1")
 name := "container"
 organization := "org.openmole"
 
@@ -20,9 +21,25 @@ libraryDependencies ++= Seq(
   //"io.circe" %% "circe-generic-extras"
 ).map(_ % circeVersion)
 
-addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
+//libraryDependencies += "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
 
-//scalacOptions ++= Seq("-target:jvm-1.8", "-language:postfixOps", "-Ymacro-annotations")
+scalacOptions ++= { 
+  scalaBinaryVersion.value match {
+    case x if x.startsWith("2.12") => Seq("-target:jvm-1.8")
+    case _ => Seq("-target:jvm-1.8", "-language:postfixOps", "-Ymacro-annotations")
+  }
+}
+
+libraryDependencies ++= {
+  scalaBinaryVersion.value match {
+    case x if x.startsWith("2.12") => Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
+    case _ => Seq()
+  }
+}
+
+  
+//addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
+//else scalacOptions ++= Seq("-target:jvm-1.8", "-language:postfixOps", "-Ymacro-annotations")
 
 //libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.5" % "test"
 

@@ -21,7 +21,7 @@ import container.Status._
 import java.io.{ File, IOException }
 import java.nio.file._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import io.circe.parser._
 import io.circe.Decoder
@@ -111,7 +111,7 @@ object OCI {
   def removeWhiteouts(directory: File): Status = {
     var whiteoutsBuffer = new ListBuffer[Path]()
 
-    Files.walk(directory.toPath).iterator()
+    Files.walk(directory.toPath).iterator().asScala
       .filter(_.getFileName.normalize().toString().startsWith(whiteoutPrefix))
       .foreach(
         whiteoutPath => {
@@ -159,7 +159,7 @@ object OCI {
 
   def deleteRecursively(path: Path): Unit =
     if (Files.isDirectory(path)) {
-      Files.walk(path).iterator().foreach(p => if (!p.equals(path)) deleteRecursively(p))
+      Files.walk(path).iterator().asScala.foreach(p => if (!p.equals(path)) deleteRecursively(p))
       Files.deleteIfExists(path)
     } else Files.deleteIfExists(path)
 
