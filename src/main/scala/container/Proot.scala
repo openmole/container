@@ -17,9 +17,10 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import java.io.{ File, PrintWriter }
+import java.io.{ BufferedOutputStream, BufferedWriter, File, FileOutputStream, OutputStreamWriter, PrintWriter }
+import java.nio.file.attribute.PosixFileAttributes
 
-import container.ImageBuilder.{ checkImageFile }
+import container.ImageBuilder.checkImageFile
 import container.OCI._
 import container.Status._
 import better.files._
@@ -228,51 +229,15 @@ object Proot {
     noSeccomp: Boolean,
     kernel: Option[String]) = {
 
-    //        val config = configInit match {
-    //            case Some(conf) => conf
-    //            case None       => {
-    //                val (_, configData) = ImageBuilder.analyseImage(directory) match {
-    //                    case (OK, Some(d1), Some(d2))   => (d1, d2)
-    //                    case (badStatus, _, _)          => return badStatus
-    //                }
-    //                configData
-    //            }
-    //        }
-
     scriptFile.getParentFile.mkdirs()
 
-    val script = scriptFile.toScala.newBufferedWriter() // new PrintWriter(scriptFile)
+    val script = new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(scriptFile)))
     try {
-      val writeln = (s: String) => script.write(s + "\n")
+      def writeln(s: String) = script.write(s + "\n")
 
       writeln("#!/usr/bin/env bash\n")
 
-      //      val workDir = config.WorkingDir match {
-      //        case Some(s) if !s.isEmpty => s
-      //        case _ => "/"
-      //      }
-      //
-      //      val entryPoint = config.Entrypoint match {
-      //        case Some(list) => assembleCommandParts(list)
-      //        case _ => ""
-      //      }
-      //
-      //      val cmd = config.Cmd match {
-      //        case Some(list) => assembleCommandParts(list)
-      //        case _ => ""
-      //      }
-
-      //Script.prepareVariables(environmentVariables.map { case(n, v) => s"$n=$v"}, standardVarsFuncName, writeln)
-
-      //      prepareVariables(List(
-      //        workdirBashVAR + "=" + workDir,
-      //        entryPointBashVar + "=" + entryPoint,
-      //        cmdBashVar + "=" + cmd), standardVarsFuncName, writeln)
-      //
       Script.prepareEnvVariables(containerEnvironmentVariables, envFuncName, writeln)
-      //
-      //      prepareMapInfo(config.Volumes, "Data volumes", infoVolumesFuncName, writeln)
-      //      prepareMapInfo(config.ExposedPorts, "Exposed ports", infoPortsFuncName, writeln)
 
       val noSeccompVariable = if (noSeccomp) Seq("PROOT_NO_SECCOMP" -> "1") else Seq()
 
@@ -286,6 +251,7 @@ object Proot {
         commandLines = commandLines,
         kernel = kernel)
       prepareCLI(writeln)
+      script.flush()
     } finally script.close()
 
     scriptFile.setExecutable(true)
@@ -366,8 +332,10 @@ object Proot {
       noSeccomp = noSeccomp,
       kernel = kernel)
 
-    try script.getAbsolutePath ! logger
-    finally script.delete()
+    try {
+      val process = Runtime.getRuntime.synchronized { script.getCanonicalPath run logger }
+      process.exitValue()
+    } finally script.delete()
   }
 
 }
