@@ -241,9 +241,8 @@ object Proot {
 
     scriptFile.getParentFile.mkdirs()
 
-    for {
-      script <- scriptFile.toScala.newFileWriter().autoClosed // new PrintWriter(scriptFile)
-    } {
+    val script = scriptFile.toScala.newBufferedWriter() // new PrintWriter(scriptFile)
+    try {
       val writeln = (s: String) => script.write(s + "\n")
 
       writeln("#!/usr/bin/env bash\n")
@@ -287,7 +286,7 @@ object Proot {
         commandLines = commandLines,
         kernel = kernel)
       prepareCLI(writeln)
-    }
+    } finally script.close()
 
     scriptFile.setExecutable(true)
   }
