@@ -82,6 +82,8 @@ sonatypeProfileName := "org.openmole"
 
 publishConfiguration := publishConfiguration.value.withOverwrite(true)
 
+releaseCrossBuild := true
+
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 
@@ -92,7 +94,7 @@ releaseProcess := Seq[ReleaseStep](
   runTest,
   setReleaseVersion,
   tagRelease,
-  releaseStepCommand("publishSigned"),
+  releaseStepCommand("+publishSigned"),
   releaseStepCommand("sonatypeBundleRelease"),
   setNextVersion,
   commitNextVersion,
