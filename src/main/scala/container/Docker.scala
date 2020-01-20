@@ -110,10 +110,10 @@ object Docker {
             id,
           ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id, "/bin/sh", s"/$runFile")
 
-        println(run.mkString(" "))
-
-        try run ! logger
-        finally Seq("docker", "rmi", id) !!
+        try {
+          val process = Runtime.getRuntime.synchronized { run run logger }
+          process.exitValue()
+        } finally Seq("docker", "rmi", id) !!
       } finally buildDirectory.delete()
     }
 

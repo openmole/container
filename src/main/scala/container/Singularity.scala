@@ -127,19 +127,24 @@ object Singularity {
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
       (Seq(runFile) ++ bind.unzip._2) foreach { f => new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f).toScala.touch() }
 
-      Process(
-        Seq(
-          singularityCommand,
-          "--silent",
-          "exec",
-          "-w") ++
-          pwd ++
-          Seq(
-            "--home", s"$absoluteRootFS/root:/root",
-            "-B", s"$absoluteRootFS/tmp:/tmp",
-            "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
-            Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
-            Seq(absoluteRootFS, "sh", s"/$runFile"), None, extraEnv = variables: _*) ! logger
+      val process =
+        Runtime.getRuntime.synchronized {
+          Process(
+            Seq(
+              singularityCommand,
+              "--silent",
+              "exec",
+              "-w") ++
+              pwd ++
+              Seq(
+                "--home", s"$absoluteRootFS/root:/root",
+                "-B", s"$absoluteRootFS/tmp:/tmp",
+                "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
+                Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
+                Seq(absoluteRootFS, "sh", s"/$runFile"), None, extraEnv = variables: _*) run logger
+        }
+
+      process.exitValue()
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()
