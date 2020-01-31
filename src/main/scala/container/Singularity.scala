@@ -111,21 +111,25 @@ object Singularity {
     buildDirectory.createDirectoryIfNotExists(createParents = true)
 
     try {
-      val cmd = if (commands.isEmpty) image.command.toSeq else commands
-
-      val runFile = "_run_commands.sh"
-
-      (buildDirectory / runFile).writeText(cmd.mkString("\n"))
-      (buildDirectory / runFile).toJava.setExecutable(true)
-
       def variables =
         image.env.getOrElse(Seq.empty).map { e =>
           val name = e.takeWhile(_ != '=')
           val value = e.dropWhile(_ != '=').drop(1)
-          (s"SINGULARITY_$name", value)
+          (s"$name", value)
         } ++ environmentVariables.map { e =>
-          (s"SINGULARITY_${e._1}", e._2)
+          (s"{e._1}", e._2)
         }
+
+      val cmd =
+        s"""
+         |${variables.map { case (n, v) => s"export $n=$v" }.mkString("\n")}
+         |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("\n")}
+        """.stripMargin
+
+      val runFile = "_run_commands.sh"
+
+      (buildDirectory / runFile).writeText(cmd)
+      (buildDirectory / runFile).toJava.setExecutable(true)
 
       def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
@@ -137,6 +141,7 @@ object Singularity {
           singularityCommand,
           "--silent",
           "exec",
+          "--cleanenv",
           "-w") ++
           pwd ++
           Seq(
@@ -146,8 +151,7 @@ object Singularity {
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
             Seq(absoluteRootFS, "sh", s"/$runFile"),
         output,
-        error,
-        variables.map { case (n, v) => s"$n=$v" })
+        error)
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()

@@ -29,7 +29,7 @@ object Test extends App {
   //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
-  val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(RegistryImage("python"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   //val saved = ImageBuilder.extractImage(File("/tmp/viablab3.tar").toJava, File("/tmp/extract").toJava)
 
@@ -42,16 +42,21 @@ object Test extends App {
   //    workDirectory = Some("/tmp"),
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
+  Singularity.executeFlatImage(
+    flattenedImage,
+    File("/tmp/").toJava,
+    Seq("pip3 install matplotlib", """ python -c "import matplotlib.pyplot as plt" """))
+
   //  Docker.executeFlatImage(
   //    flattenedImage,
   //    File("/tmp/dock").toJava,
   //    Seq("/bin/ls", "/bin/ls -l"))
 
-  Singularity.executeFlatImage(
-    flattenedImage,
-    File("/tmp/sing").toJava,
-    Seq("touch /test", "/bin/ls", "/bin/ls -l"),
-    workDirectory = Some("/"))
+  //  Singularity.executeFlatImage(
+  //    flattenedImage,
+  //    File("/tmp/sing").toJava,
+  //    Seq("touch /test", "/bin/ls", "/bin/ls -l"),
+  //    workDirectory = Some("/"))
 
   /*,
       bind = Vector("/tmp/youpi" -> "/home/youpi"),

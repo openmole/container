@@ -24,7 +24,7 @@ import container.ImageBuilder.checkImageFile
 import container.OCI._
 import container.Status._
 import better.files._
-
+import collection.JavaConverters._
 import scala.sys.process._
 
 object Proot {
@@ -183,8 +183,7 @@ object Proot {
       write("function " + functionName + " {")
       maybeArgs match {
         case Some(args) => {
-          for (arg <- args)
-            write("\texport " + addQuoteToRightSideOfEquality(arg))
+          for (arg <- args) write("\texport " + addQuoteToRightSideOfEquality(arg))
         }
         case _ => write("\t:")
       }
@@ -321,6 +320,8 @@ object Proot {
     val script = (tmpDirectory.toScala / launchScriptName).toJava
     val workDirectoryValue = workDirectory.orElse(image.workDirectory)
 
+    val additionalVariables = if (!environmentVariables.exists(_._1 == "HOME")) Seq("HOME" -> "/root") else Seq()
+
     generatePRootScript(
       script,
       proot = proot,
@@ -328,7 +329,7 @@ object Proot {
       workDirectory = workDirectoryValue,
       bind = bind,
       containerEnvironmentVariables = image.env,
-      environmentVariables = environmentVariables,
+      environmentVariables = environmentVariables ++ additionalVariables,
       commandLines = commandLines,
       noSeccomp = noSeccomp,
       kernel = kernel)

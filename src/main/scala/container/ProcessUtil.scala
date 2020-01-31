@@ -3,11 +3,12 @@ package container
 import java.io.PrintStream
 import org.apache.commons.exec.PumpStreamHandler
 import org.apache.commons.exec.ShutdownHookProcessDestroyer
+import collection.JavaConverters._
 
 object ProcessUtil {
   val processDestroyer = new ShutdownHookProcessDestroyer
 
-  def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[String] = Seq.empty) = {
+  def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[String] = environmentVariables) = {
     val runtime = Runtime.getRuntime
     val process = runtime.synchronized {
       runtime.exec(
@@ -41,5 +42,7 @@ object ProcessUtil {
     } finally processDestroyer.remove(process)
     process.exitValue
   }
+
+  def environmentVariables = System.getenv().asScala.map { case (c, v) => s"$c=$v" }.toSeq
 }
 
