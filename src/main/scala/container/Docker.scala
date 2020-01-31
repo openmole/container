@@ -1,6 +1,6 @@
 package container
 
-import java.io.File
+import java.io.{File, PrintStream}
 import java.util.UUID
 
 import container.ImageBuilder.checkImageFile
@@ -61,7 +61,7 @@ object Docker {
       bind: Seq[(String, String)] = Vector.empty,
       workDirectory: Option[String] = None,
       environmentVariables: Seq[(String, String)] = Vector.empty,
-      logger: ProcessLogger = tool.outputLogger) = {
+      logger: PrintStream = tool.outputLogger) = {
       import better.files._
 
       val id = UUID.randomUUID().toString
@@ -81,7 +81,11 @@ object Docker {
             |COPY ./$runFile /
             |""".stripMargin)
 
-        Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath) !! logger
+        ProcessUtil.execute(
+          Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath),
+          logger,
+          logger
+        )
 
         def variables =
           image.env.getOrElse(Seq.empty).flatMap { e =>
@@ -110,16 +114,14 @@ object Docker {
             id,
           ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id, "/bin/sh", s"/$runFile")
 
-        try {
-          val process = Runtime.getRuntime.synchronized { run run logger }
-          process.exitValue()
-        } finally Seq("docker", "rmi", id) !!
+        try ProcessUtil.execute(run, logger, logger)
+        finally  ProcessUtil.execute(Seq("docker", "rmi", id), logger, logger)
       } finally buildDirectory.delete()
     }
 
-  def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
-    (s"$dockerCommand rmi ${image.imageId}").!!
-    image.file.delete()
-  }
+//  def clean(image: BuiltDockerImage, dockerCommand: String = "docker") = {
+//    (s"$dockerCommand rmi ${image.imageId}").!!
+//    image.file.delete()
+//  }
 
 }

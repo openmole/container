@@ -1,5 +1,7 @@
 package container
 
+import java.io.{ OutputStream, PrintStream }
+
 import scala.sys.process.ProcessLogger
 
 /*
@@ -19,6 +21,9 @@ import scala.sys.process.ProcessLogger
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package object tool {
-  def outputLogger = ProcessLogger(s => println(s), s => println(s))
-  def nullLogger = ProcessLogger(s => (), s => ())
+
+  def outputLogger = System.out
+  def nullLogger = new PrintStream(new OutputStream {
+    override def write(i: Int): Unit = {}
+  })
 }

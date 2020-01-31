@@ -19,7 +19,7 @@ package container
 
 import container.ImageBuilder.checkImageFile
 import container.OCI.ConfigurationData
-import java.io.File
+import java.io.{ File, PrintStream }
 import java.util.UUID
 
 import scala.sys.process._
@@ -61,7 +61,7 @@ object Singularity {
     Seq(singularityCommand, "run", file) ++ command.getOrElse(image.command) !!
   }
 
-  def buildSIF(image: FlatImage, sif: File, tmpDirectory: File, singularityCommand: String = "singularity", logger: ProcessLogger = tool.outputLogger) = {
+  def buildSIF(image: FlatImage, sif: File, tmpDirectory: File, singularityCommand: String = "singularity", logger: PrintStream = tool.outputLogger) = {
     import better.files._
 
     val id = UUID.randomUUID().toString
@@ -84,7 +84,11 @@ object Singularity {
            |""".stripMargin)
 
       val sandbox = (buildDirectory / "empty")
-      Seq(singularityCommand, "build", "--fakeroot", sandbox.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath) !! logger
+
+      ProcessUtil.execute(
+        Seq(singularityCommand, "build", "--fakeroot", sandbox.toJava.getAbsolutePath, (buildDirectory / "empty.def").toJava.getAbsolutePath),
+        logger,
+        logger)
 
     } finally buildDirectory.delete()
   }
@@ -97,7 +101,7 @@ object Singularity {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: ProcessLogger = tool.outputLogger) = {
+    logger: PrintStream = tool.outputLogger) = {
     import better.files._
 
     val id = UUID.randomUUID().toString
@@ -127,24 +131,22 @@ object Singularity {
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
       (Seq(runFile) ++ bind.unzip._2) foreach { f => new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f).toScala.touch() }
 
-      val process =
-        Runtime.getRuntime.synchronized {
-          Process(
-            Seq(
-              singularityCommand,
-              "--silent",
-              "exec",
-              "-w") ++
-              pwd ++
-              Seq(
-                "--home", s"$absoluteRootFS/root:/root",
-                "-B", s"$absoluteRootFS/tmp:/tmp",
-                "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
-                Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
-                Seq(absoluteRootFS, "sh", s"/$runFile"), None, extraEnv = variables: _*) run logger
-        }
-
-      process.exitValue()
+      ProcessUtil.execute(
+        Seq(
+          singularityCommand,
+          "--silent",
+          "exec",
+          "-w") ++
+          pwd ++
+          Seq(
+            "--home", s"$absoluteRootFS/root:/root",
+            "-B", s"$absoluteRootFS/tmp:/tmp",
+            "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
+            Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
+            Seq(absoluteRootFS, "sh", s"/$runFile"),
+        logger,
+        logger,
+        variables.map { case (n, v) => s"$n=$v" })
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()

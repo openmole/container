@@ -9,8 +9,8 @@ libraryDependencies += "org.typelevel"  %% "squants"  % "1.6.0"
 //libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
-
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
+libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"
 
 val circeVersion = "0.12.3"
 

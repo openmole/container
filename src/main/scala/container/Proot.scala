@@ -17,7 +17,7 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import java.io.{ BufferedOutputStream, BufferedWriter, File, FileOutputStream, OutputStreamWriter, PrintWriter }
+import java.io.{ BufferedOutputStream, BufferedWriter, File, FileOutputStream, OutputStreamWriter, PrintStream, PrintWriter }
 import java.nio.file.attribute.PosixFileAttributes
 
 import container.ImageBuilder.checkImageFile
@@ -306,9 +306,9 @@ object Proot {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: ProcessLogger = tool.outputLogger,
+    logger: PrintStream = tool.outputLogger,
     noSeccomp: Boolean = false,
-    kernel: Option[String] = None) = {
+    kernel: Option[String] = None): Int = {
 
     checkImageFile(image.file)
 
@@ -332,10 +332,8 @@ object Proot {
       noSeccomp = noSeccomp,
       kernel = kernel)
 
-    try {
-      val process = Runtime.getRuntime.synchronized { script.getCanonicalPath run logger }
-      process.exitValue()
-    } finally script.delete()
+    try ProcessUtil.execute(Seq(script.getCanonicalPath), logger, logger)
+    finally script.delete()
   }
 
 }
