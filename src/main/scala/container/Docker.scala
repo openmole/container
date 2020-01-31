@@ -61,7 +61,8 @@ object Docker {
       bind: Seq[(String, String)] = Vector.empty,
       workDirectory: Option[String] = None,
       environmentVariables: Seq[(String, String)] = Vector.empty,
-      logger: PrintStream = tool.outputLogger) = {
+      output: PrintStream = tool.outputLogger,
+      error: PrintStream = tool.outputLogger) = {
       import better.files._
 
       val id = UUID.randomUUID().toString
@@ -83,8 +84,8 @@ object Docker {
 
         ProcessUtil.execute(
           Seq(dockerCommand, "build", "-t", id, buildDirectory.toJava.getAbsolutePath),
-          logger,
-          logger
+          output,
+          error
         )
 
         def variables =
@@ -114,8 +115,8 @@ object Docker {
             id,
           ) ++ workDirectoryValue ++ volumes ++ variables ++ Seq(id, "/bin/sh", s"/$runFile")
 
-        try ProcessUtil.execute(run, logger, logger)
-        finally  ProcessUtil.execute(Seq("docker", "rmi", id), logger, logger)
+        try ProcessUtil.execute(run, output, error)
+        finally  ProcessUtil.execute(Seq("docker", "rmi", id), output, error)
       } finally buildDirectory.delete()
     }
 

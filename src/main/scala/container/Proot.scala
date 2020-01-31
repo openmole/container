@@ -306,7 +306,8 @@ object Proot {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: PrintStream = tool.outputLogger,
+    output: PrintStream = tool.outputLogger,
+    error: PrintStream = tool.outputLogger,
     noSeccomp: Boolean = false,
     kernel: Option[String] = None): Int = {
 
@@ -332,7 +333,7 @@ object Proot {
       noSeccomp = noSeccomp,
       kernel = kernel)
 
-    try ProcessUtil.execute(Seq(script.getCanonicalPath), logger, logger)
+    try ProcessUtil.execute(Seq(script.getCanonicalPath), output, error)
     finally script.delete()
   }
 

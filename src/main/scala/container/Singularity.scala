@@ -101,7 +101,8 @@ object Singularity {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    logger: PrintStream = tool.outputLogger) = {
+    output: PrintStream = tool.outputLogger,
+    error: PrintStream = tool.outputLogger) = {
     import better.files._
 
     val id = UUID.randomUUID().toString
@@ -144,8 +145,8 @@ object Singularity {
             "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
             Seq(absoluteRootFS, "sh", s"/$runFile"),
-        logger,
-        logger,
+        output,
+        error,
         variables.map { case (n, v) => s"$n=$v" })
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
