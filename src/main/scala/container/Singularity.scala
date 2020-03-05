@@ -131,10 +131,14 @@ object Singularity {
       (buildDirectory / runFile).writeText(cmd)
       (buildDirectory / runFile).toJava.setExecutable(true)
 
-      def pwd = workDirectory.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
+      def pwd = workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
-      (Seq(runFile) ++ bind.unzip._2) foreach { f => new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f).toScala.touch() }
+      (Seq(runFile) ++ bind.unzip._2) foreach { f =>
+        val localFile = new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f)
+        localFile.getParentFile.mkdirs()
+        localFile.toScala.touch()
+      }
 
       ProcessUtil.execute(
         Seq(
