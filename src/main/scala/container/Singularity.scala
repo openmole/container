@@ -134,11 +134,16 @@ object Singularity {
       def pwd = workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
-      (Seq(runFile) ++ bind.unzip._2) foreach { f =>
+      def touchContainerFile(f: String, directory: Boolean) = {
         val localFile = new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f)
-        localFile.getParentFile.mkdirs()
-        localFile.toScala.touch()
+        if (!directory) {
+          localFile.getParentFile.mkdirs()
+          localFile.toScala.touch()
+        } else localFile.mkdirs()
       }
+
+      touchContainerFile(runFile, false)
+      bind foreach { case (l, d) => touchContainerFile(d, new java.io.File(l).isDirectory) }
 
       ProcessUtil.execute(
         Seq(
