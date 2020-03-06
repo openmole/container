@@ -136,10 +136,11 @@ object Singularity {
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
       def touchContainerFile(f: String, directory: Boolean) = {
         val localFile = new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f)
-        if (!directory) {
-          localFile.getParentFile.mkdirs()
-          localFile.toScala.touch()
-        } else localFile.mkdirs()
+        if (!localFile.exists())
+          if (!directory) {
+            localFile.getParentFile.mkdirs()
+            localFile.toScala.touch()
+          } else localFile.mkdirs()
       }
 
       touchContainerFile(runFile, false)
