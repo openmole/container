@@ -102,6 +102,11 @@ object ImageDownloader {
     def apply[T](f: => T): Future[T]
   }
 
+  def imageDirectory(localRepository: File, image: RegistryImage) = {
+    import better.files._
+    (localRepository.toScala / image.name / image.tag).toJava
+  }
+
   def downloadContainerImage(
     dockerImage: RegistryImage,
     localRepository: File,
@@ -118,11 +123,11 @@ object ImageDownloader {
         //val containerId = containerConfig(manifestValue).get.Image.get
 
         val tmpDirectory = localRepository.toScala / ".tmp"
-        val imageDirectory = localRepository.toScala / dockerImage.imageName / dockerImage.tag
-        val idsDirectory = imageDirectory / "id"
+        val imageDirectoryValue = imageDirectory(localRepository, dockerImage).toScala
+        val idsDirectory = imageDirectoryValue / "id"
 
         tmpDirectory.createDirectoryIfNotExists()
-        imageDirectory.createDirectoryIfNotExists()
+        imageDirectoryValue.createDirectoryIfNotExists()
         idsDirectory.createDirectoryIfNotExists()
 
         val conf = manifestValue.history.get
@@ -173,7 +178,7 @@ object ImageDownloader {
 
                 lock.withLockInDirectory(idsDirectory.toJava) {
                   if (!idFile.exists) {
-                    val layerPath = imageDirectory / layerHash
+                    val layerPath = imageDirectoryValue / layerHash
                     tmpLayerDir moveTo layerPath
                     idFile.createFile
                     idFile write layerHash
@@ -195,12 +200,12 @@ object ImageDownloader {
 
         // should it be written each time
         val configName = Hash.sha256(configString) + ".json"
-        (imageDirectory / configName) write configString
+        (imageDirectoryValue / configName) write configString
 
-        val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.imageName, dockerImage.tag, configName)
-        (imageDirectory / "manifest.json") write manifestString
+        val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.name, dockerImage.tag, configName)
+        (imageDirectoryValue / "manifest.json") write manifestString
 
-        SavedImage(imageDirectory.toJava)
+        SavedImage(imageDirectoryValue.toJava)
       case _ => throw ImageNotFound(dockerImage)
     }
   }

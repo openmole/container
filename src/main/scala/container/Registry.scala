@@ -69,7 +69,7 @@ case class Err(msg: String) {
 }
 
 case class RegistryImage(
-  imageName: String,
+  name: String,
   tag: String = "latest",
   registry: String = "https://registry-1.docker.io",
   command: Seq[String] = Seq())
@@ -206,7 +206,7 @@ object Registry {
   }
 
   def baseURL(image: RegistryImage): String = {
-    val path = if (image.imageName.contains("/")) image.imageName else s"library/${image.imageName}"
+    val path = if (image.name.contains("/")) image.name else s"library/${image.name}"
     s"${image.registry}/v2/$path"
   }
 
