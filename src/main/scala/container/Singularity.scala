@@ -115,14 +115,12 @@ object Singularity {
         image.env.getOrElse(Seq.empty).map { e =>
           val name = e.takeWhile(_ != '=')
           val value = e.dropWhile(_ != '=').drop(1)
-          (s"$name", value)
-        } ++ environmentVariables.map { e =>
-          (s"{e._1}", e._2)
-        }
+          (name, value)
+        } ++ environmentVariables
 
       val cmd =
         s"""
-         |${variables.map { case (n, v) => s"export $n=$v" }.mkString("\n")}
+         |${variables.map { case (n, v) => s"export $n=\"$v\"" }.mkString("\n")}
          |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("\n")}
         """.stripMargin
 
