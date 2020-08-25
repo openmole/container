@@ -163,7 +163,7 @@ object Registry {
 
       val authenticationRequest = authentication(get, proxy = proxy)
 
-      val t = token(authenticationRequest.get, proxy = proxy) match {
+      val t = token(authenticationRequest, proxy = proxy) match {
         case Left(l) ⇒ throw new RuntimeException(s"Failed to obtain authentication token: $l")
         case Right(r) ⇒ r
       }
@@ -174,19 +174,20 @@ object Registry {
       request
     }
 
-    def authentication(get: HttpGet, proxy: Option[HttpHost]) = execute(get, proxy = proxy, checkError = false) { response ⇒
-      Option(response.getFirstHeader("Www-Authenticate")).map(_.getValue).map {
-        a ⇒
-          val Array(scheme, rest) = a.split(" ")
-          val map =
-            rest.split(",").map {
-              l ⇒
-                val kv = l.trim.split("=")
-                kv(0) → kv(1).stripPrefix("\"").stripSuffix("\"")
-            }.toMap
-          AuthenticationRequest(scheme, map("realm"), map("service"), map("scope"))
+    def authentication(get: HttpGet, proxy: Option[HttpHost]) =
+      execute(get, proxy = proxy, checkError = false) { response ⇒
+        Option(response.getFirstHeader("Www-Authenticate")).map(_.getValue).map {
+          a ⇒
+            val Array(scheme, rest) = a.split(" ")
+            val map =
+              rest.split(",").map {
+                l ⇒
+                  val kv = l.trim.split("=")
+                  kv(0) → kv(1).stripPrefix("\"").stripSuffix("\"")
+              }.toMap
+            AuthenticationRequest(scheme, map("realm"), map("service"), map("scope"))
+        }.getOrElse(throw new RuntimeException(s"Failed to authentication on the docker registry, response does not contain www-authenticate header: ${response}"))
       }
-    }
 
     def token(authenticationRequest: AuthenticationRequest, proxy: Option[HttpHost]): Either[Err, Token] = {
       val tokenRequest = s"${authenticationRequest.realm}?service=${authenticationRequest.service}&scope=${authenticationRequest.scope}"
