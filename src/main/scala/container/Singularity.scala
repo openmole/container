@@ -121,7 +121,7 @@ object Singularity {
       val cmd =
         s"""
          |${variables.map { case (n, v) => s"""export $n="$v"""" }.mkString("\n")}
-         |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("\n")}
+         |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("&& \\" + "\n")}
         """.stripMargin
 
       val runFile = "_run_commands.sh"
