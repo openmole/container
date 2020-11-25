@@ -163,10 +163,7 @@ object Registry {
 
       val authenticationRequest = authentication(get, proxy = proxy)
 
-      val t = token(authenticationRequest, proxy = proxy) match {
-        case Left(l) ⇒ throw new RuntimeException(s"Failed to obtain authentication token: $l")
-        case Right(r) ⇒ r
-      }
+      val t = token(authenticationRequest, proxy = proxy)
 
       val request = new HttpGet(url)
       request.addHeader("Authorization", s"${t.scheme} ${t.token}")
@@ -189,18 +186,22 @@ object Registry {
         }.getOrElse(throw new RuntimeException(s"Failed to authentication on the docker registry, response does not contain www-authenticate header: ${response}"))
       }
 
-    def token(authenticationRequest: AuthenticationRequest, proxy: Option[HttpHost]): Either[Err, Token] = {
+    def token(authenticationRequest: AuthenticationRequest, proxy: Option[HttpHost]): Token = {
       val tokenRequest = s"${authenticationRequest.realm}?service=${authenticationRequest.service}&scope=${authenticationRequest.scope}"
 
       val get = new HttpGet(tokenRequest)
       execute(get, proxy = proxy) { response ⇒
-        // @Romain could be done with optics at the cost of an extra dependency ;)
-        val tokenRes = for {
-          parsed ← parse(content(response))
-          token ← parsed.hcursor.get[String]("token")
-        } yield Token(authenticationRequest.scheme, token)
+        val responseContent = content(response)
 
-        tokenRes.leftMap(l ⇒ Err(l.getMessage))
+        try {
+          val tokenRes = for {
+            parsed ← parse(responseContent)
+            token ← parsed.hcursor.get[String]("token")
+          } yield Token(authenticationRequest.scheme, token)
+          tokenRes.toTry.get
+        } catch {
+          case t: Throwable => throw new IOException(s"Failed to obtain authentication token from docker registry, response to query $get was $responseContent.", t)
+        }
       }
     }
 

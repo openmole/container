@@ -9,3 +9,5 @@ pom.xml
 *.sublime*
 *.DS_Store
 tags
+.bsp/
+.bsp/*
