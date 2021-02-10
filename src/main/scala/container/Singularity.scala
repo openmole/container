@@ -146,6 +146,9 @@ object Singularity {
       touchContainerFile(runFile, false)
       bind foreach { case (l, d) => touchContainerFile(d, new java.io.File(l).isDirectory) }
 
+      // Create directory requiered by singularity
+      Seq("dev", "root", "tmp", "var/tmp").foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+
       ProcessUtil.execute(
         Seq(
           singularityCommand,
