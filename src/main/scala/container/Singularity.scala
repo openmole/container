@@ -101,6 +101,7 @@ object Singularity {
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
+    useFakeroot: Boolean = false,
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) = {
     import better.files._
@@ -130,6 +131,7 @@ object Singularity {
       (buildDirectory / runFile).toJava.setExecutable(true)
 
       def pwd = workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
+      def fakeroot = if (useFakeroot) Seq("--fakeroot") else Seq()
 
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
       def touchContainerFile(f: String, directory: Boolean) = {
@@ -151,6 +153,7 @@ object Singularity {
           "exec",
           "--cleanenv",
           "-w") ++
+          fakeroot ++
           pwd ++
           Seq(
             "--home", s"$absoluteRootFS/root:/root",
