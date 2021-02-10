@@ -102,7 +102,7 @@ object Singularity {
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
-    singularityWorkdir: Option[String] = None,
+    singularityWorkdir: Option[File] = None,
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) = {
     import better.files._
@@ -135,7 +135,7 @@ object Singularity {
       def fakeroot = if (useFakeroot) Seq("--fakeroot") else Seq()
       def singularityWorkdirArgument =
         singularityWorkdir match {
-          case Some(w) => Seq("--workdir", w)
+          case Some(w) => Seq("--workdir", w.getAbsolutePath)
           case None => Seq()
         }
 
