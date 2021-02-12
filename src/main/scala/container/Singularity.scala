@@ -171,8 +171,9 @@ object Singularity {
             "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
             Seq(absoluteRootFS, "sh", s"/$runFile"),
-        output,
-        error)
+        env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
+        out = output,
+        err = error)
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     } finally buildDirectory.delete()

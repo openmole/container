@@ -8,12 +8,13 @@ import collection.JavaConverters._
 object ProcessUtil {
   val processDestroyer = new ShutdownHookProcessDestroyer
 
-  def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[String] = environmentVariables) = {
+  def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[(String, String)] = environmentVariables) = {
+
     val runtime = Runtime.getRuntime
     val process = runtime.synchronized {
       runtime.exec(
         cmd.toArray,
-        env.toArray)
+        env.map { case (c, v) => s"$c=$v" }.toArray)
     }
 
     executeProcess(process, out = out, err = err)
@@ -43,6 +44,6 @@ object ProcessUtil {
     process.exitValue
   }
 
-  def environmentVariables = System.getenv().asScala.map { case (c, v) => s"$c=$v" }.toSeq
+  def environmentVariables = System.getenv().asScala.toSeq
 }
 
