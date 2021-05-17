@@ -110,8 +110,12 @@ object Tar {
             // has the entry been marked as a symlink in the archive?
             if (!e.getLinkName.isEmpty) {
               val link = Paths.get(e.getLinkName)
-              if (Files.isSymbolicLink(dest) && overwrite) dest.toFile.delete()
-              Files.createSymbolicLink(dest, link)
+              try Files.createSymbolicLink(dest, link)
+              catch {
+                case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+                  dest.toFile.delete()
+                  Files.createSymbolicLink(dest, link)
+              }
             } // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
             else {
               Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
