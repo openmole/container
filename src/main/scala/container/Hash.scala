@@ -30,9 +30,9 @@ object Hash {
     case class InputStreamSource(is: InputStream) extends HashSource
     case class StringSource(s: String) extends HashSource
 
-    implicit def fromFile(f: java.io.File) = FileSource(f)
-    implicit def fromString(s: String) = StringSource(s)
-    implicit def fromInputString(is: InputStream) = InputStreamSource(is)
+    implicit def fromFile(f: java.io.File): FileSource = FileSource(f)
+    implicit def fromString(s: String): StringSource = StringSource(s)
+    implicit def fromInputString(is: InputStream): InputStreamSource = InputStreamSource(is)
   }
 
   sealed trait HashSource

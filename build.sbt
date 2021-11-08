@@ -1,13 +1,13 @@
 
-scalaVersion := "2.13.6"
-crossScalaVersions := Seq("2.13.6")
+scalaVersion := "2.13.7"
+crossScalaVersions := Seq("2.13.7")
 name := "container"
 organization := "org.openmole"
 
 libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.10"
-libraryDependencies += "org.typelevel"  %% "squants"  % "1.8.0"
+libraryDependencies += "org.typelevel"  %% "squants"  % "1.8.3" cross(CrossVersion.for2_13Use3)
 
-libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.8.0"
+libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.1" cross(CrossVersion.for3Use2_13)
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"
 
@@ -24,24 +24,9 @@ libraryDependencies ++= Seq(
 
 scalacOptions ++= { 
   scalaBinaryVersion.value match {
-    case x if x.startsWith("2.12") => Seq("-target:jvm-1.8")
-    case _ => Seq("-target:jvm-1.8", "-language:postfixOps", "-Ymacro-annotations")
+    case _ => Seq("-target:11", "-language:postfixOps", "-Ymacro-annotations", "-language:implicitConversions", "-Ytasty-reader")
   }
 }
-
-libraryDependencies ++= {
-  scalaBinaryVersion.value match {
-    case x if x.startsWith("2.12") => Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
-    case _ => Seq()
-  }
-}
-
-  
-//addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
-//else scalacOptions ++= Seq("-target:jvm-1.8", "-language:postfixOps", "-Ymacro-annotations")
-
-//libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.5" % "test"
-
 
 /* Publish */
 

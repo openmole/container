@@ -48,7 +48,7 @@ class UserBadDataError(exception: Throwable, val message: String) extends Except
   def this(message: String) = {
     this(null, message)
   }
-  def this(e: Throwable) {
+  def this(e: Throwable) = {
     this(e, null)
   }
 }
