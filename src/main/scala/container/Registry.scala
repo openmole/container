@@ -245,15 +245,5 @@ object Registry {
     }
   }
 
-  /*
-    * Download layer file from image if not already present in layers destination directory
-    *
-    * @param dockerImage DockerImage which layer to download
-    * @param layer layer to download
-    * @param layersDirectory Layers destination directory
-    * @param layerFile Destination file for the layer within destination directory
-    * @param timeout Download timeout
-    * @param newFile OM temporary file creation service
-    */
 }
 

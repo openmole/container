@@ -31,7 +31,7 @@ object Status {
       this
     }
     override def toString = {
-      if (isBad) {
+      if (isBad()) {
         if (this.argument != None)
           Console.BOLD + Console.RED + "Error: " +
             this.message + " : " + this.argument +

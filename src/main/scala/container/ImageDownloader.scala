@@ -16,7 +16,6 @@
  */
 package container
 
-import java.io.File
 import java.util.UUID
 import java.util.concurrent.{ ExecutorService, Executors, ThreadFactory }
 
@@ -102,14 +101,14 @@ object ImageDownloader {
     def apply[T](f: => T): Future[T]
   }
 
-  def imageDirectory(localRepository: File, image: RegistryImage) = {
+  def imageDirectory(localRepository: java.io.File, image: RegistryImage) = {
     import better.files._
     (localRepository.toScala / image.name / image.tag).toJava
   }
 
   def downloadContainerImage(
     dockerImage: RegistryImage,
-    localRepository: File,
+    localRepository: java.io.File,
     timeout: Time,
     retry: Option[Int] = None,
     executor: Executor = Executor.sequential,
@@ -118,7 +117,9 @@ object ImageDownloader {
 
     val retryCount = retry.getOrElse(0)
 
-    decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost)))) match {
+    val decodedManifest: util.Try[ImageManifestV2Schema1] = decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost))))
+
+    decodedManifest match {
       case util.Success(manifestValue) =>
         //val containerId = containerConfig(manifestValue).get.Image.get
 
@@ -154,9 +155,9 @@ object ImageDownloader {
         val layersHash = manifestValue.fsLayers.get.map(_.blobSum)
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
-        val layersMap =
+        val layersMap: Iterator[Future[(String, Option[String])]] =
           for {
-            ((hash, (id, ignore)), v1compat) <- (layersHash.toIterator zip layersIDS.toIterator zip infiniteConfig)
+            ((hash, (id, ignore)), v1compat) <- (layersHash.iterator zip layersIDS.iterator zip infiniteConfig)
           } yield executor {
             val idFile = idsDirectory / id
             if (!ignore) {
@@ -178,19 +179,20 @@ object ImageDownloader {
 
                 lock.withLockInDirectory(idsDirectory.toJava) {
                   if (!idFile.exists) {
-                    val layerPath = imageDirectoryValue / layerHash
-                    tmpLayerDir moveTo layerPath
+                    val layerPath: File = imageDirectoryValue / layerHash
+                    //tmpLayerDir.moveTo(layerPath)
+                    java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
                     idFile.createFile
                     idFile write layerHash
-                    hash -> Some(layerHash)
+                    (hash, Some(layerHash))
                   } else {
                     tmpLayerDir.delete()
-                    hash -> Some(idFile.contentAsString)
+                    (hash, Some(idFile.contentAsString))
                   }
                 }
-
-              } else hash -> Some(idFile.contentAsString)
-            } else hash -> None
+                (hash, None)
+              } else (hash, Some(idFile.contentAsString))
+            } else (hash, None)
           }
 
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
