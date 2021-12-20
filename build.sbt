@@ -1,11 +1,11 @@
 
 scalaVersion := "3.1.0"
-crossScalaVersions := Seq("3.1.0")
+crossScalaVersions := Seq("2.13.7", "3.1.0")
 name := "container"
 organization := "org.openmole"
 
 libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.10"
-libraryDependencies += "org.typelevel"  %% "squants"  % "1.8.3" cross(CrossVersion.for2_13Use3)
+libraryDependencies += "org.typelevel"  %% "squants"  % "1.8.3" // cross(CrossVersion.for2_13Use3)
 
 libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.1" cross(CrossVersion.for3Use2_13)
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
