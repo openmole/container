@@ -1,6 +1,6 @@
 
-scalaVersion := "3.1.0"
-crossScalaVersions := Seq("2.13.7", "3.1.0")
+scalaVersion := "3.2.0"
+crossScalaVersions := Seq("3.2.0")
 name := "container"
 organization := "org.openmole"
 
@@ -11,7 +11,7 @@ libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.1" cross(
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"
 
-val circeVersion = "0.14.1"
+val circeVersion = "0.14.3"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
@@ -21,12 +21,7 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 //libraryDependencies += "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
-
-scalacOptions ++= { 
-  scalaBinaryVersion.value match {
-    case _ => Seq("-target:11", "-language:postfixOps", "-Ymacro-annotations", "-language:implicitConversions", "-Ytasty-reader")
-  }
-}
+scalacOptions ++= Seq("-Xtarget:11", "-language:higherKinds", "-language:postfixOps", "-language:implicitConversions", "-Xmax-inlines:50")
 
 /* Publish */
 
