@@ -190,7 +190,6 @@ object ImageDownloader {
                     (hash, Some(idFile.contentAsString))
                   }
                 }
-                (hash, None)
               } else (hash, Some(idFile.contentAsString))
             } else (hash, None)
           }

@@ -26,10 +26,10 @@ object Test extends App {
   //File("/tmp/extract").delete(swallowIOExceptions = true)
   //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
 
-  //File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
 
-  val saved = ImageDownloader.downloadContainerImage(RegistryImage("python"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   //val saved = ImageBuilder.extractImage(File("/tmp/viablab3.tar").toJava, File("/tmp/extract").toJava)
 
