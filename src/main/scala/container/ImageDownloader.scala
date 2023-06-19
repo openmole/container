@@ -182,7 +182,7 @@ object ImageDownloader {
                     val layerPath: File = imageDirectoryValue / layerHash
                     //tmpLayerDir.moveTo(layerPath)
                     java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
-                    idFile.createFile
+                    idFile.createFile()
                     idFile write layerHash
                     (hash, Some(layerHash))
                   } else {

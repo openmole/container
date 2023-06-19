@@ -1,17 +1,17 @@
 
-scalaVersion := "3.2.2"
-crossScalaVersions := Seq("3.2.2")
+scalaVersion := "3.3.0"
+crossScalaVersions := Seq("3.3.0")
 name := "container"
 organization := "org.openmole"
 
 libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.10"
 libraryDependencies += "org.typelevel"  %% "squants"  % "1.8.3" // cross(CrossVersion.for2_13Use3)
 
-libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.1" cross(CrossVersion.for3Use2_13)
+libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.2"
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"
 
-val circeVersion = "0.14.3"
+val circeVersion = "0.14.5"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
