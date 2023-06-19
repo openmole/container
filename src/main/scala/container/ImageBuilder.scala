@@ -56,7 +56,7 @@ object ImageBuilder {
 
     FlatImage(
       file = workDirectory,
-      workDirectory = Registry.Config.workDirectory(config),
+      workDirectory = Registry.Config.workDirectory(config).filter(_.nonEmpty),
       env = Registry.Config.env(config),
       layers = manifest.Layers)
   }
