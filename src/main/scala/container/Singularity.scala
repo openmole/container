@@ -131,13 +131,17 @@ object Singularity {
       (buildDirectory / runFile).writeText(cmd)
       (buildDirectory / runFile).toJava.setExecutable(true)
 
-      def pwd =
+
+      def wd =
         def emptyIsRoot(path: String) =
           path match
             case "" => "/"
             case s => s
 
-        workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", emptyIsRoot(w))).getOrElse(Seq.empty)
+        workDirectory.orElse(image.workDirectory).map(emptyIsRoot)
+
+      def pwd =
+        wd.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
 
       def fakeroot = if (useFakeroot) Seq("--fakeroot") else Seq()
       def singularityWorkdirArgument =
@@ -160,7 +164,11 @@ object Singularity {
       bind foreach { case (l, d) => touchContainerFile(d, new java.io.File(l).isDirectory) }
 
       // Create directory requiered by singularity
-      Seq("dev", "root", "tmp", "var/tmp").foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+      def createDirectories() =
+        def relativeWd = wd.toSeq.map(_.dropWhile(_.isSpaceChar).dropWhile(_ == '/'))
+        (Seq("dev", "root", "tmp", "var/tmp") ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+
+      createDirectories()
 
       ProcessUtil.execute(
         Seq(
