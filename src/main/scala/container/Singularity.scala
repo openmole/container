@@ -131,7 +131,14 @@ object Singularity {
       (buildDirectory / runFile).writeText(cmd)
       (buildDirectory / runFile).toJava.setExecutable(true)
 
-      def pwd = workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
+      def pwd =
+        def emptyIsRoot(path: String) =
+          path match
+            case "" => "/"
+            case s => s
+
+        workDirectory.orElse(image.workDirectory).map(w => Seq("--pwd", emptyIsRoot(w))).getOrElse(Seq.empty)
+
       def fakeroot = if (useFakeroot) Seq("--fakeroot") else Seq()
       def singularityWorkdirArgument =
         singularityWorkdir match {
