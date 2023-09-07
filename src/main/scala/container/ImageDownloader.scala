@@ -156,12 +156,14 @@ object ImageDownloader {
         val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
 
         val layersMap: Iterator[Future[(String, Option[String])]] =
-          for {
+          for
             ((hash, (id, ignore)), v1compat) <- (layersHash.iterator zip layersIDS.iterator zip infiniteConfig)
-          } yield executor {
+          yield executor:
             val idFile = idsDirectory / id
-            if (!ignore) {
-              if (!idFile.exists) {
+            if !ignore
+            then
+              if !idFile.exists
+              then
                 val dirName = UUID.randomUUID().toString
                 val tmpLayerDir = tmpDirectory / dirName
 
@@ -173,26 +175,27 @@ object ImageDownloader {
 
                 val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-                if (!(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty) {
-                  (tmpLayerDir / "json").appendLine(v1compat.get)
-                }
+                if !(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty
+                then (tmpLayerDir / "json").appendLine(v1compat.get)
 
-                lock.withLockInDirectory(idsDirectory.toJava) {
-                  if (!idFile.exists) {
+                lock.withLockInDirectory(idsDirectory.toJava):
+                  if !idFile.exists
+                  then
                     val layerPath: File = imageDirectoryValue / layerHash
                     //tmpLayerDir.moveTo(layerPath)
-                    java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
+                    if !layerPath.exists
+                    then java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
+                    else tmpLayerDir.delete()
+
                     idFile.createFile()
                     idFile write layerHash
                     (hash, Some(layerHash))
-                  } else {
+                  else
                     tmpLayerDir.delete()
                     (hash, Some(idFile.contentAsString))
-                  }
-                }
-              } else (hash, Some(idFile.contentAsString))
-            } else (hash, None)
-          }
+
+              else (hash, Some(idFile.contentAsString))
+            else (hash, None)
 
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
 
