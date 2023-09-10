@@ -96,7 +96,8 @@ object Tar {
       if (!directory.exists()) directory.mkdirs()
       if (!Files.isDirectory(directory.toPath)) throw new IOException(directory.toString + " is not a directory.")
 
-      val directoryRights = ListBuffer[(Path, Int)]()
+      case class DirectoryMetaData(path: Path, mode: Int, time: Long)
+      val directoryRights = ListBuffer[DirectoryMetaData]()
 
       def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
 
@@ -108,7 +109,7 @@ object Tar {
         if e.isDirectory
         then
           Files.createDirectories(dest)
-          directoryRights += (dest -> e.getMode)
+          directoryRights += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
         else
           Files.createDirectories(dest.getParent)
 
@@ -127,11 +128,14 @@ object Tar {
             Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
             setMode(dest, e.getMode)
 
+        dest.toFile.setLastModified(e.getModTime.getTime)
 
       // Set directory right after extraction in case some directory are not writable
-      for {
-        (path, mode) ← directoryRights
-      } setMode(path, mode)
+      for r ← directoryRights
+      do
+        setMode(r.path, r.mode)
+        r.path.toFile.setLastModified(r.time)
+
     } finally tis.close()
   }
 
