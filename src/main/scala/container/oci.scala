@@ -27,12 +27,11 @@ import io.circe.parser._
 import io.circe.Decoder
 import io.circe.generic.semiauto._
 
-object InternetProtocol {
+object InternetProtocol:
   sealed abstract class InternetProtocol(val typeProtocol: String)
   case object TCP extends InternetProtocol("TCP")
   case object UDP extends InternetProtocol("UDP")
   case object OTHER extends InternetProtocol("OTHER")
-}
 
 object OCI {
   case class InvalidManifest(manifest: String) extends Exception
@@ -84,7 +83,7 @@ object OCI {
     }
   }
 
-  object WhiteoutUtils {
+  object WhiteoutUtils:
     /* @see <a href="https://github.com/docker/docker/blob/master/pkg/archive/whiteouts.go">Whiteout files</a> */
     /* indicates a file removed in recent layers */
     val whiteoutPrefix = ".wh."
@@ -94,43 +93,48 @@ object OCI {
     val whiteoutLinkDir = whiteoutPrefix + "plnk"
     /* indicates that the current directory is inaccessible in recent layers
         * (the directory file should have a whiteout file in the parent folder) */
-    val whiteoutOpaqueDir = whiteoutPrefix + ".opq."
+    val whiteoutOpaqueDir = ".wh..opq"
 
-    def getPrefix(path: Path) = {
-      var filename = path.getFileName.normalize().toString()
+    def getPrefix(path: Path) =
+      val filename = path.getFileName.normalize().toString()
 
-      if (filename.startsWith(whiteoutOpaqueDir)) whiteoutOpaqueDir
+      if (filename.endsWith(whiteoutOpaqueDir)) whiteoutOpaqueDir
       else if (filename.startsWith(whiteoutLinkDir)) whiteoutLinkDir
       else if (filename.startsWith(whiteoutMetaPrefix)) whiteoutMetaPrefix
       else if (filename.startsWith(whiteoutPrefix)) whiteoutPrefix
       else ""
-    }
-  }
+
+    def isWhiteout(p: Path) = p.getFileName.normalize().toString().startsWith(whiteoutPrefix)
+
+
   import WhiteoutUtils._
 
-  def removeWhiteouts(directory: File): Status = {
-    var whiteoutsBuffer = new ListBuffer[Path]()
+  def removeWhiteouts(directory: File): Status =
+    val whiteoutsBuffer = new ListBuffer[Path]()
 
-    Files.walk(directory.toPath).iterator().asScala
-      .filter(_.getFileName.normalize().toString().startsWith(whiteoutPrefix))
-      .foreach(
-        whiteoutPath => {
-          whiteoutsBuffer += whiteoutPath
+    Files.walk(directory.toPath).iterator().asScala.
+      filter(_.toFile.getName.startsWith(whiteoutPrefix)).
+      foreach: whiteoutPath =>
 
-          var prefix = getPrefix(whiteoutPath)
-          getConcernedFile(whiteoutPath, prefix) match {
-            case Some(path) => whiteoutsBuffer += path
-            case None =>
-          }
-        })
+          if whiteoutPath.getFileName.startsWith(whiteoutOpaqueDir) ||  whiteoutPath.getFileName.startsWith(whiteoutPrefix + whiteoutOpaqueDir)
+          then
+            val list = Files.list(whiteoutPath.getParent).iterator().asScala.toList
+            //if list.exists((p: Path) => p.toFile.getName.contains("ldpath")) then println(whiteoutPath)
+            whiteoutsBuffer ++= Files.list(whiteoutPath.getParent).iterator().asScala
+          else
+            whiteoutsBuffer += whiteoutPath
+            getConcernedFile(whiteoutPath, whiteoutPrefix) match
+              case Some(path) => whiteoutsBuffer += path
+              case None =>
 
     val whiteouts = whiteoutsBuffer.toList
-    whiteouts.foreach(path => deleteRecursively(path))
+    whiteouts.foreach:path =>
+      //if path.toString.contains(".opq") then println("delete " + path)
+      deleteRecursively(path)
 
-    return OK
-  }
+    OK
 
-  def getConcernedFile(whiteoutFilePath: Path, prefix: String) = {
+  def getConcernedFile(whiteoutFilePath: Path, prefix: String) =
     val tempStr = whiteoutFilePath.normalize().toString()
     val filePathString = tempStr.replaceAll(prefix, "")
     val filePath = Paths.get(filePathString)
@@ -139,7 +143,6 @@ object OCI {
       case true => Some(filePath)
       case false => None
     }
-  }
 
   def removeWhiteoutFileAuxiliary(whiteoutFilePath: Path, prefix: String): Status = {
     val pathString = whiteoutFilePath.normalize().toString()

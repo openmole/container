@@ -114,7 +114,7 @@ object DockerMetadata {
     AttachStdout: Option[Boolean] = None,
     Hostname: Option[String] = Some(""), // udocker specific
     StdinOnce: Option[Boolean] = None,
-    Labels: Option[Map[String, EmptyObject]] = None, // FIXME what is this?
+    Labels: Option[Map[String, String]] = None, // FIXME what is this?
     AttachStderr: Option[Boolean] = None,
     OnBuild: Option[List[String]] = None, // FIXME what is this?
     Tty: Option[Boolean] = None,
@@ -138,7 +138,7 @@ object DockerMetadata {
 
   case class ImageJSON(
     // <--- documented fields  --->
-    created: Option[DockerDate] = None,
+    created: Option[String] = None,
     author: Option[String] = Some(""),
     architecture: Option[String] = Some(""),
     os: Option[String] = Some(""),
@@ -163,7 +163,7 @@ object DockerMetadata {
   def v1HistoryToImageJson(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]): ImageJSON = {
     val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
     val cursor: HCursor = rawJsonImage.hcursor
-    val created = cursor.get[DockerDate]("created").toOption
+    val created = cursor.get[String]("created").toOption
     val author = cursor.get[String]("author").toOption
     val architecture = cursor.get[String]("architecture").toOption
     val os = cursor.get[String]("os").toOption

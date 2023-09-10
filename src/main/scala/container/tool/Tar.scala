@@ -11,11 +11,10 @@ import scala.collection.mutable.ListBuffer
 
 object Tar {
 
-  private object Mode {
+  private object Mode:
     val EXEC_MODE = 1 + 8 + 64
     val WRITE_MODE = 2 + 16 + 128
     val READ_MODE = 4 + 32 + 256
-  }
 
   import Mode._
 
@@ -79,14 +78,15 @@ object Tar {
     } finally tos.close()
   }
 
-  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false) = {
+
+
+  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) = {
     /** set mode from an integer as retrieved from a Tar archive */
-    def setMode(file: Path, m: Int) = {
+    def setMode(file: Path, m: Int) =
       val f = file.toRealPath().toFile
       f.setReadable((m & READ_MODE) != 0)
       f.setWritable((m & WRITE_MODE) != 0)
       f.setExecutable((m & EXEC_MODE) != 0)
-    }
 
     val tis =
       if (!compressed) new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive)))
@@ -98,31 +98,35 @@ object Tar {
 
       val directoryRights = ListBuffer[(Path, Int)]()
 
-      Iterator.continually(tis.getNextTarEntry).takeWhile(_ != null).foreach {
-        e ⇒
-          val dest = Paths.get(directory.toString, e.getName)
-          if (e.isDirectory) {
-            Files.createDirectories(dest)
-            directoryRights += (dest -> e.getMode)
-          } else {
-            Files.createDirectories(dest.getParent)
+      def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
 
-            // has the entry been marked as a symlink in the archive?
-            if (!e.getLinkName.isEmpty) {
-              val link = Paths.get(e.getLinkName)
-              try Files.createSymbolicLink(dest, link)
-              catch {
-                case e: java.nio.file.FileAlreadyExistsException if overwrite =>
-                  dest.toFile.delete()
-                  Files.createSymbolicLink(dest, link)
-              }
-            } // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
-            else {
-              Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
-              setMode(dest, e.getMode)
-            }
-          }
-      }
+      Iterator.continually(tis.getNextTarEntry).takeWhile(_ != null).filter(filterValue).foreach: e ⇒
+        val dest = Paths.get(directory.toString, e.getName)
+
+        //if dest.toFile.getName.contains(".opq") then println("create " + dest)
+
+        if e.isDirectory
+        then
+          Files.createDirectories(dest)
+          directoryRights += (dest -> e.getMode)
+        else
+          Files.createDirectories(dest.getParent)
+
+          // has the entry been marked as a symlink in the archive?
+          if e.getLinkName.nonEmpty
+          then
+            val link = Paths.get(e.getLinkName)
+            try Files.createSymbolicLink(dest, link)
+            catch
+              case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+                dest.toFile.delete()
+                Files.createSymbolicLink(dest, link)
+
+          // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
+          else
+            Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
+            setMode(dest, e.getMode)
+
 
       // Set directory right after extraction in case some directory are not writable
       for {

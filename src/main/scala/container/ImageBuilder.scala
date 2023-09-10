@@ -37,19 +37,20 @@ object ImageBuilder {
     SavedImage(extractDirectory)
   }
 
-  def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage = {
-    def extractLayers(savedImage: SavedImage, layers: Vector[String], destination: File) = {
+  def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
+    def extractLayers(savedImage: SavedImage, layers: Vector[String], destination: File) =
       destination.toScala.createDirectoryIfNotExists()
 
-      layers.foreach {
-        layerName =>
-          Tar.extract((savedImage.file.toScala / layerName).toJava, destination)
-          removeWhiteouts(destination)
-      }
-    }
+      layers.zipWithIndex.foreach: (layerName, i) =>
+        //println(i + "  " + layerName)
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
+        removeWhiteouts(destination)
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
 
     val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
     val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
+
+    //println(image.file.toScala / manifest.Config contentAsString)
 
     val rootfs = workDirectory.toScala / FlatImage.rootfsName
     extractLayers(image, manifest.Layers, rootfs.toJava)
@@ -59,7 +60,6 @@ object ImageBuilder {
       workDirectory = Registry.Config.workDirectory(config),
       env = Registry.Config.env(config),
       layers = manifest.Layers)
-  }
 
   def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
     FlatImage(
