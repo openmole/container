@@ -80,7 +80,7 @@ object Tar {
 
 
 
-  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) = {
+  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) =
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, m: Int) =
       val f = file.toRealPath().toFile
@@ -92,12 +92,15 @@ object Tar {
       if (!compressed) new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive)))
       else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive))))
 
-    try {
-      if (!directory.exists()) directory.mkdirs()
-      if (!Files.isDirectory(directory.toPath)) throw new IOException(directory.toString + " is not a directory.")
+    try
+      if !directory.exists() then directory.mkdirs()
+      if !Files.isDirectory(directory.toPath) then throw new IOException(directory.toString + " is not a directory.")
 
       case class DirectoryMetaData(path: Path, mode: Int, time: Long)
-      val directoryRights = ListBuffer[DirectoryMetaData]()
+      val directoryData = ListBuffer[DirectoryMetaData]()
+
+      case class LinkData(dest: Path, linkName: String, hard: Boolean)
+      val linkData = ListBuffer[LinkData]()
 
       def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
 
@@ -109,34 +112,46 @@ object Tar {
         if e.isDirectory
         then
           Files.createDirectories(dest)
-          directoryRights += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
+          directoryData += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
         else
           Files.createDirectories(dest.getParent)
 
           // has the entry been marked as a symlink in the archive?
           if e.getLinkName.nonEmpty
-          then
-            val link = Paths.get(e.getLinkName)
-            try Files.createSymbolicLink(dest, link)
-            catch
-              case e: java.nio.file.FileAlreadyExistsException if overwrite =>
-                dest.toFile.delete()
-                Files.createSymbolicLink(dest, link)
-
-          // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
+          then linkData += LinkData(dest, e.getLinkName, e.isLink)
+            // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
           else
             Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
             setMode(dest, e.getMode)
 
         dest.toFile.setLastModified(e.getModTime.getTime)
 
+
+      // Process links
+      for l <- linkData
+      do
+        if !l.hard
+        then
+          val link = Paths.get(l.linkName)
+          try Files.createSymbolicLink(l.dest, link)
+          catch
+            case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+              l.dest.toFile.delete()
+              Files.createSymbolicLink(l.dest, link)
+        else
+          val link = Paths.get(directory.toString, l.linkName)
+          try Files.createLink(l.dest, link)
+          catch
+            case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+              l.dest.toFile.delete()
+              Files.createLink(l.dest, link)
+
       // Set directory right after extraction in case some directory are not writable
-      for r ← directoryRights
+      for r ← directoryData
       do
         setMode(r.path, r.mode)
         r.path.toFile.setLastModified(r.time)
 
-    } finally tis.close()
-  }
+    finally tis.close()
 
 }
