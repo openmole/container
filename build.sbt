@@ -1,6 +1,6 @@
 
-scalaVersion := "3.3.0"
-crossScalaVersions := Seq("3.3.0")
+scalaVersion := "3.3.1"
+crossScalaVersions := Seq("3.3.1")
 name := "container"
 organization := "org.openmole"
 
@@ -11,7 +11,7 @@ libraryDependencies += "com.github.pathikrit" %% "better-files" % "3.9.2"
 libraryDependencies += "org.apache.commons" % "commons-compress" % "1.19"
 libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"
 
-val circeVersion = "0.14.5"
+val circeVersion = "0.14.6"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
