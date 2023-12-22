@@ -26,12 +26,13 @@ object Test extends App {
   //File("/tmp/extract").delete(swallowIOExceptions = true)
   //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
 
-  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
-  File("/tmp/container").delete(swallowIOExceptions = true)
+//  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
+//  File("/tmp/container").delete(swallowIOExceptions = true)
 
+  //val saved = ImageDownloader.downloadContainerImage(RegistryImage("julia", "1.9.4"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
-  //val saved = ImageBuilder.extractImage(File("/tmp/viablab3.tar").toJava, File("/tmp/extract").toJava)
+  //val saved = ImageBuilder.extractImage(File("/tmp/test.tar").toJava, File("/tmp/extract").toJava)
 
   val flattenedImage = ImageBuilder.flattenImage(saved, File("/tmp/container/").toJava)
 
@@ -45,7 +46,7 @@ object Test extends App {
   Singularity.executeFlatImage(
     flattenedImage,
     File("/tmp/").toJava,
-    Seq("pip3 install matplotlib", """ python -c "import matplotlib.pyplot as plt" """))
+    Seq("apt update"))
 
   //  Docker.executeFlatImage(
   //    flattenedImage,

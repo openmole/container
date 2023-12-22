@@ -30,8 +30,8 @@ package object container {
   case class FlatImage(
     file: File,
     workDirectory: Option[String],
-    env: Option[List[String]],
-    layers: Vector[String],
+    env: Option[Seq[String]],
+    layers: Seq[String],
     command: Option[String] = None)
 
   case class SavedImage(file: File)

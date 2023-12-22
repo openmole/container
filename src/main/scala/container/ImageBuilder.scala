@@ -38,7 +38,7 @@ object ImageBuilder {
   }
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
-    def extractLayers(savedImage: SavedImage, layers: Vector[String], destination: File) =
+    def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
       destination.toScala.createDirectoryIfNotExists()
 
       layers.zipWithIndex.foreach: (layerName, i) =>

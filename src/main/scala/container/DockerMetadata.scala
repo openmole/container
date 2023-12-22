@@ -1,5 +1,7 @@
 package container
 
+import container.DockerMetadata.ImageManifestV2Schema1.ManifestField.Platform
+
 /**
  * Copyright (C) 2017 Jonathan Passerat-Palmbach
  *
@@ -154,34 +156,39 @@ object DockerMetadata {
   implicit val imageJSONDecoder: Decoder[ImageJSON] = deriveDecoder
   implicit val imageJSONEncoder: Encoder[ImageJSON] = deriveEncoder
 
-  def containerConfig(manifest: ImageManifestV2Schema1) = {
+  def containerConfig(manifest: ImageManifestV2Schema1) =
     val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
     (rawJsonImage \\ "config").head.as[ContainerConfig].toOption
-  }
 
   import Registry.Manifest
-  def v1HistoryToImageJson(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]): ImageJSON = {
-    val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
-    val cursor: HCursor = rawJsonImage.hcursor
-    val created = cursor.get[String]("created").toOption
-    val author = cursor.get[String]("author").toOption
-    val architecture = cursor.get[String]("architecture").toOption
-    val os = cursor.get[String]("os").toOption
-    val config = cursor.downField("config").as[ContainerConfig].toOption //
-    val rootfs = Some(RootFS(diff_ids = manifest.fsLayers.get.reverse.flatMap { l => layersHash(l.blobSum).map("sha256:" + _) }))
-    val history =
-      for (x <- manifest.history.get.tail.reverse) yield decode[HistoryEntry](x.v1Compatibility) match {
-        case Right(value) => value
-      } //)
-    val id = cursor.get[String]("id").toOption
-    val parent = cursor.get[String]("parent").toOption
-    val docker_version = cursor.get[String]("docker_version").toOption
-    val container = cursor.get[String]("container").toOption
-    val container_config = cursor.get[ContainerConfig]("container_config").toOption
-    ImageJSON(created, author, architecture, os, config, rootfs, Some(history), id, parent, docker_version, container, container_config)
-  }
+//  def v1HistoryToImageJson(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]): ImageJSON =
+//    val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
+//    val cursor: HCursor = rawJsonImage.hcursor
+//    val created = cursor.get[String]("created").toOption
+//    val author = cursor.get[String]("author").toOption
+//    val architecture = cursor.get[String]("architecture").toOption
+//    val os = cursor.get[String]("os").toOption
+//    val config = cursor.downField("config").as[ContainerConfig].toOption //
+//    val rootfs = Some(RootFS(diff_ids = manifest.fsLayers.get.reverse.flatMap { l => layersHash(l.blobSum).map("sha256:" + _) }))
+//    val history =
+//      for (x <- manifest.history.get.tail.reverse) yield decode[HistoryEntry](x.v1Compatibility) match {
+//        case Right(value) => value
+//      } //)
+//    val id = cursor.get[String]("id").toOption
+//    val parent = cursor.get[String]("parent").toOption
+//    val docker_version = cursor.get[String]("docker_version").toOption
+//    val container = cursor.get[String]("container").toOption
+//    val container_config = cursor.get[ContainerConfig]("container_config").toOption
+//    ImageJSON(created, author, architecture, os, config, rootfs, Some(history), id, parent, docker_version, container, container_config)
 
   case class Digest(blobSum: String)
+
+
+  object V1History:
+    case class V1Compatibility(
+      id: String,
+      throwaway: Option[Boolean])
+
   case class V1History(v1Compatibility: String)
 
   /**
@@ -214,6 +221,24 @@ object DockerMetadata {
     signature: Option[String],
     `protected`: Option[String])
 
+  object ImageManifestV2Schema1:
+    object ManifestField:
+      //case class Annotations(`vnd.docker.reference.digest`: Option[String], `vnd.docker.reference.type`: Option[String])
+      case class Platform(architecture: String, os: String)
+
+    case class ManifestField(
+      //annotations: Option[Manifest.Annotations],
+      digest: String,
+      mediaType: String,
+      platform: ManifestField.Platform)
+
+    object ManifestV2:
+      case class Media(mediaType: String, digest: String, size: Int)
+
+    case class ManifestV2(
+      config: ManifestV2.Media,
+      layers: Seq[ManifestV2.Media])
+
   /**
    * Registry image Manifest of an image in a repo according to Docker image spec v1
    *
@@ -229,7 +254,10 @@ object DockerMetadata {
     history: Option[List[V1History]],
     schemaVersion: Option[Int],
     // <--- extra fields not part of the spec: implementation specific --->
-    signatures: Option[List[Signature]] = None)
+    signatures: Option[List[Signature]] = None,
+
+    // Schema 2
+    manifests: Option[Seq[ImageManifestV2Schema1.ManifestField]])
 
   // TODO ImageManifestV2Schema2 (ref: https://docs.docker.com/registry/spec/manifest-v2-2/) (example: https://gist.github.com/harche/6f29c6fe8479cb6334d2)
 
@@ -244,7 +272,7 @@ object DockerMetadata {
    */
   case class TopLevelImageManifest(
     Config: String,
-    Layers: Vector[String],
-    RepoTags: Vector[String],
+    Layers: Seq[String],
+    RepoTags: Seq[String],
     Parent: Option[String] = None)
 }

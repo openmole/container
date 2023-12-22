@@ -36,9 +36,8 @@ import scala.sys.process._
 
 object ImageDownloader {
 
-  object HttpProxy {
+  object HttpProxy:
     def toHost(httpProxy: HttpProxy) = HttpHost.create(httpProxy.uri)
-  }
 
   case class HttpProxy(uri: String)
 
@@ -48,7 +47,8 @@ object ImageDownloader {
     parent: String,
     created: String,
     containerConfig: ContainerConf)
-  case class ImageNotFound(image: RegistryImage) extends Exception
+
+  case class ImageNotFound(image: RegistryImage, e: Option[Throwable] = None) extends Exception(e.orNull)
 
   //  def downloadImageWithDocker(dockerImage: RegistryImage): SavedImage = {
   //    val name = dockerImage.imageName + ":" + dockerImage.tag
@@ -59,52 +59,34 @@ object ImageDownloader {
   //    SavedImage(file.toJava) //, command = dockerImage.command)
   //  }
 
-  def getManifestAsString(layersHash: List[String], name: String, tag: String, configName: String): String = {
-    val config = "[{\"Config\":\"" + configName + "\","
-    val repotag = "\"RepoTags\":[\"" + name + ":" + tag + "\"],"
-    val layers = "\"Layers\":["
-    var manifest = config + repotag + layers
-    val last = layersHash.reverse.last
-    for (hash <- layersHash.reverse.init) manifest = manifest + "\"" + hash + "/layer.tar\","
-    manifest + "\"" + last + "/layer.tar\"]}]"
-  }
+//  def getConfigAsString(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]) =
+//    imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
 
-  def getConfigAsString(manifest: ImageManifestV2Schema1, layersHash: Map[String, Option[String]]) =
-    imageJSONEncoder(v1HistoryToImageJson(manifest, layersHash)).toString()
-
-  def writeManifestFile(path: String, manifest: String): Unit = {
+  def writeManifestFile(path: String, manifest: String): Unit =
     BFile(path + "/manifest.json").appendLine(manifest)
-  }
 
-  object Executor {
-    def sequential = new Executor {
-      override def apply[T](f: => T): Future[T] = Future.fromTry {
+  object Executor:
+    def sequential = new Executor:
+      override def apply[T](f: => T): Future[T] = Future.fromTry:
         util.Try { f: T }
-      }
-    }
 
-    private val daemonFactory = new ThreadFactory {
-      override def newThread(r: Runnable): Thread = {
+    private val daemonFactory = new ThreadFactory:
+      override def newThread(r: Runnable): Thread =
         val t = new Thread(r)
         t.setDaemon(true)
         t
-      }
-    }
 
-    def parallel(implicit executorService: ExecutorService = Executors.newFixedThreadPool(10, daemonFactory)) = new Executor {
+    def parallel(implicit executorService: ExecutorService = Executors.newFixedThreadPool(10, daemonFactory)) = new Executor:
       override def apply[T](f: => T): Future[T] =
         Future { f }(ExecutionContext.fromExecutorService(executorService))
-    }
-  }
 
-  sealed trait Executor {
+
+  sealed trait Executor:
     def apply[T](f: => T): Future[T]
-  }
 
-  def imageDirectory(localRepository: java.io.File, image: RegistryImage) = {
+  def imageDirectory(localRepository: java.io.File, image: RegistryImage) =
     import better.files._
     (localRepository.toScala / image.name / image.tag).toJava
-  }
 
   def downloadContainerImage(
     dockerImage: RegistryImage,
@@ -117,49 +99,61 @@ object ImageDownloader {
 
     val retryCount = retry.getOrElse(0)
 
-    val decodedManifest: util.Try[ImageManifestV2Schema1] = decodeManifest(Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost))))
+    val manifestString = Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost)))
+    val decodedManifest: util.Try[ImageManifestV2Schema1] = decodeManifest(manifestString)
 
-    decodedManifest match {
+    decodedManifest match
       case util.Success(manifestValue) =>
-        //val containerId = containerConfig(manifestValue).get.Image.get
-
         val tmpDirectory = localRepository.toScala / ".tmp"
         val imageDirectoryValue = imageDirectory(localRepository, dockerImage).toScala
-        val idsDirectory = imageDirectoryValue / "id"
+        val existingIndexDirectory = imageDirectoryValue / "hash"
 
         tmpDirectory.createDirectoryIfNotExists()
         imageDirectoryValue.createDirectoryIfNotExists()
-        idsDirectory.createDirectoryIfNotExists()
+        existingIndexDirectory.createDirectoryIfNotExists()
 
-        val conf = manifestValue.history.get
+        val (hashesAndIgnore, configString) =
+          manifestValue.manifests match
+            case Some(manifests) =>
+              import io.circe.generic.auto.*
+              val mid = manifests.find(m => m.platform.architecture == "amd64" && m.platform.os == "linux").getOrElse(throw RuntimeException("No image found for amd64 on linux, manifest is " + manifests))
+              val query = s"${baseURL(dockerImage)}/manifests/${mid.digest}"
+              val headers = Seq("Accept" -> mid.mediaType)
+              val manifestString = Retry.retry(retryCount)(download(query, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
+              val manifestValue = decode[ImageManifestV2Schema1.ManifestV2](manifestString).toTry.get
+              val layers =
+                manifestValue.layers.map: l =>
+                  l.digest -> false
 
-        val layersIDS = {
-          val raw = conf.map(_.v1Compatibility)
+              val configString =
+                val url = s"""${baseURL(dockerImage)}/blobs/${manifestValue.config.digest}"""
+                val headers = Seq("Accept" -> manifestValue.config.mediaType)
+                Retry.retry(retryCount)(download(url, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
 
-          raw.map { x =>
-            val parsed = parse(x).getOrElse(Json.Null)
-            val cursor: HCursor = parsed.hcursor
-            val ignore =
-              cursor.get[Boolean]("throwaway") match {
-                case Right(value) => value
-                case Left(error) => false
-              }
+              (layers.reverse, configString)
+            case None =>
+              val conf = manifestValue.history.get
+              val raw = conf.map(_.v1Compatibility)
 
-            cursor.get[String]("id") match {
-              case Right(id) => id -> ignore
-              case Left(error) => throw error
-            }
-          }
-        }
+              val ignores =
+                raw.map: x =>
+                  import io.circe.generic.auto.*
 
-        val layersHash = manifestValue.fsLayers.get.map(_.blobSum)
-        val infiniteConfig: Iterator[Option[String]] = conf.map(c => Some(c.v1Compatibility)).toIterator ++ Iterator.continually(None)
+                  val v1Compat = decode[V1History.V1Compatibility](x).toTry.get
+                  val ignore = v1Compat.throwaway.getOrElse(false)
+                  val id = v1Compat.id
+                  ignore
 
-        val layersMap: Iterator[Future[(String, Option[String])]] =
+              val layersHash = manifestValue.fsLayers.get.map(_.blobSum)
+
+              (layersHash zip ignores, conf.head.v1Compatibility)
+
+
+        val layersMap: Seq[Future[(String, Option[String])]] =
           for
-            ((hash, (id, ignore)), v1compat) <- (layersHash.iterator zip layersIDS.iterator zip infiniteConfig)
+            (hash, ignore) <- hashesAndIgnore
           yield executor:
-            val idFile = idsDirectory / id
+            val idFile = existingIndexDirectory / hash
             if !ignore
             then
               if !idFile.exists
@@ -175,10 +169,7 @@ object ImageDownloader {
 
                 val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-                if !(tmpLayerDir.pathAsString / "json").exists && v1compat.nonEmpty
-                then (tmpLayerDir / "json").appendLine(v1compat.get)
-
-                lock.withLockInDirectory(idsDirectory.toJava):
+                lock.withLockInDirectory(existingIndexDirectory.toJava):
                   if !idFile.exists
                   then
                     val layerPath: File = imageDirectoryValue / layerHash
@@ -199,18 +190,33 @@ object ImageDownloader {
 
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
 
-        val imageJSON = v1HistoryToImageJson(manifestValue, layersHashMap)
-        val configString = imageJSONEncoder(imageJSON).toString()
-
         // should it be written each time
         val configName = Hash.sha256(configString) + ".json"
         (imageDirectoryValue / configName) write configString
 
-        val manifestString = getManifestAsString(layersHash.flatMap(l => layersHashMap(l)), dockerImage.name, dockerImage.tag, configName)
+        val layerFiles =
+          hashesAndIgnore.map(_._1).flatMap(l => layersHashMap(l)).reverse.map: l =>
+          //hashesAndIgnore.map(_._1).flatMap(l => layersHashMap(l)).map: l =>
+            l + "/layer.tar"
+
+        val toolManifest =
+          List(
+            TopLevelImageManifest(
+              Config = configName,
+              Layers = layerFiles,
+              RepoTags = Seq(s"${dockerImage.name}:${dockerImage.tag}")
+            )
+          )
+
+        val manifestString =
+          import io.circe.syntax.*
+          import io.circe.generic.auto.*
+          toolManifest.asJson.spaces2
+
         (imageDirectoryValue / "manifest.json") write manifestString
 
         SavedImage(imageDirectoryValue.toJava)
-      case _ => throw ImageNotFound(dockerImage)
-    }
+      case util.Failure(e) => throw ImageNotFound(dockerImage, Some(e))
+
   }
 }

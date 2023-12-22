@@ -64,9 +64,8 @@ object NetworkService {
 
 class NetworkService(val httpProxy: Option[HttpHost])
 
-case class Err(msg: String) {
+case class Err(msg: String):
   def +(o: Err) = Err(msg + o.msg)
-}
 
 case class RegistryImage(
   name: String,
@@ -74,13 +73,11 @@ case class RegistryImage(
   registry: String = "https://registry-1.docker.io",
   command: Seq[String] = Seq())
 
-object Stream {
-  def copy(inputStream: InputStream, outputStream: OutputStream) = {
+object Stream:
+  def copy(inputStream: InputStream, outputStream: OutputStream) =
     val DefaultBufferSize = 16 * 1024
     val buffer = new Array[Byte](DefaultBufferSize)
     Iterator.continually(inputStream.read(buffer)).takeWhile(_ != -1).foreach { outputStream.write(buffer, 0, _) }
-  }
-}
 
 object Registry {
 
@@ -128,10 +125,9 @@ object Registry {
       networkService.httpProxy.map { host ⇒ HttpHost.create(NetworkService.HttpHost.toString(host)) }
 */
     def client(proxy: Option[HttpHost], preventGetHeaderForward: Boolean = false) =
-      proxy match {
+      proxy match
         case Some(httpHost: HttpHost) ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).setProxy(httpHost).build()
         case _ ⇒ builder(preventGetHeaderForward = preventGetHeaderForward).build()
-      }
 
     def execute[T](get: HttpGet, proxy: Option[HttpHost], checkError: Boolean = true, preventGetHeaderForward: Boolean = false)(f: HttpResponse ⇒ T) = {
       val response = client(proxy = proxy, preventGetHeaderForward = preventGetHeaderForward).execute(get)
@@ -157,9 +153,11 @@ object Registry {
     case class AuthenticationRequest(scheme: String, realm: String, service: String, scope: String)
     case class Token(scheme: String, token: String)
 
-    def withToken(url: String, timeout: Time, proxy: Option[HttpHost]) = {
+    def withToken(url: String, timeout: Time, proxy: Option[HttpHost], headers: Seq[(String, String)] = Seq()) =
       val get = new HttpGet(url)
       get.setConfig(RequestConfig.custom().setConnectTimeout(timeout.millis.toInt).setConnectionRequestTimeout(timeout.millis.toInt).build())
+      headers.foreach: (h, c) =>
+        get.addHeader(h, c)
 
       val authenticationRequest = authentication(get, proxy = proxy)
 
@@ -169,7 +167,6 @@ object Registry {
       request.addHeader("Authorization", s"${t.scheme} ${t.token}")
       request.setConfig(RequestConfig.custom().setConnectTimeout(timeout.millis.toInt).setConnectionRequestTimeout(timeout.millis.toInt).build())
       request
-    }
 
     def authentication(get: HttpGet, proxy: Option[HttpHost]) =
       execute(get, proxy = proxy, checkError = false) { response ⇒
@@ -207,28 +204,34 @@ object Registry {
 
   }
 
-  def baseURL(image: RegistryImage): String = {
+  def baseURL(image: RegistryImage): String =
     val path = if (image.name.contains("/")) image.name else s"library/${image.name}"
     s"${image.registry}/v2/$path"
-  }
 
-  def downloadManifest(image: RegistryImage, timeout: Time, proxy: Option[HttpHost]): String = {
-    val url = s"${baseURL(image)}/manifests/${image.tag}"
-    val httpResponse = client(proxy = proxy, preventGetHeaderForward = true).execute(Token.withToken(url, timeout, proxy = proxy))
+  def download(url: String, timeout: Time, proxy: Option[HttpHost], headers: Seq[(String, String)] = Seq()): String =
+    val httpResponse =
+      val request = Token.withToken(url, timeout, proxy = proxy, headers)
+      headers.foreach: (h, c) =>
+        request.addHeader(h, c)
 
-    if (httpResponse.getStatusLine.getStatusCode >= 300)
-      throw new UserBadDataError(s"Docker registry responded with $httpResponse to query of image $image")
+      client(proxy = proxy, preventGetHeaderForward = true).execute(request)
+
+    if httpResponse.getStatusLine.getStatusCode >= 300
+    then throw new UserBadDataError(s"Docker registry responded with $httpResponse to query of $url")
     content(httpResponse)
-  }
+
+
+  def downloadManifest(image: RegistryImage, timeout: Time, proxy: Option[HttpHost], headers: Seq[(String, String)] = Seq()): String =
+    val url =  s"${baseURL(image)}/manifests/${image.tag}"
+    download(url, timeout, proxy, headers)
 
   def decodeConfig(configContent: String) = decode[ImageJSON](configContent).toTry
   def decodeTopLevelManifest(manifestContent: String) = decode[List[TopLevelImageManifest]](manifestContent).map(_.head).toTry
   def decodeManifest(manifestContent: String) = decode[ImageManifestV2Schema1](manifestContent).toTry
 
-  object Config {
+  object Config:
     def workDirectory(config: ImageJSON) = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)
     def env(config: ImageJSON) = config.config.flatMap(_.Env) orElse config.container_config.flatMap(_.Env)
-  }
 
   def layers(manifest: ImageManifestV2Schema1): Seq[Layer] =
     for {
@@ -236,14 +239,12 @@ object Registry {
       fsLayer ← fsLayers
     } yield Layer(fsLayer.blobSum)
 
-  def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time, proxy: Option[HttpHost]): Unit = {
+  def downloadBlob(image: RegistryImage, layer: Layer, file: BFile, timeout: Time, proxy: Option[HttpHost]): Unit =
     val url = s"""${baseURL(image)}/blobs/${layer.digest}"""
-    execute(Token.withToken(url, timeout, proxy = proxy), preventGetHeaderForward = true, proxy = proxy) { response ⇒
+    execute(Token.withToken(url, timeout, proxy = proxy), preventGetHeaderForward = true, proxy = proxy): response ⇒
       val os = file.newOutputStream
       try Stream.copy(new GZIPInputStream(response.getEntity.getContent), os)
       finally os.close()
-    }
-  }
 
 }
 
