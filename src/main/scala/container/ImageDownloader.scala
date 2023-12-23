@@ -112,7 +112,7 @@ object ImageDownloader {
         imageDirectoryValue.createDirectoryIfNotExists()
         existingIndexDirectory.createDirectoryIfNotExists()
 
-        val (hashesAndIgnore, configString) =
+        val (layerHashes, configString) =
           manifestValue.manifests match
             case Some(manifests) =>
               import io.circe.generic.auto.*
@@ -121,9 +121,7 @@ object ImageDownloader {
               val headers = Seq("Accept" -> mid.mediaType)
               val manifestString = Retry.retry(retryCount)(download(query, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
               val manifestValue = decode[ImageManifestV2Schema1.ManifestV2](manifestString).toTry.get
-              val layers =
-                manifestValue.layers.map: l =>
-                  l.digest -> false
+              val layers = manifestValue.layers.map(_.digest)
 
               val configString =
                 val url = s"""${baseURL(dockerImage)}/blobs/${manifestValue.config.digest}"""
@@ -144,49 +142,48 @@ object ImageDownloader {
                   val id = v1Compat.id
                   ignore
 
-              val layersHash = manifestValue.fsLayers.get.map(_.blobSum)
+              val layersHash =
+                val hashes = manifestValue.fsLayers.get.map(_.blobSum)
+                (hashes zip ignores).filter(!_._2).map(_._1)
 
-              (layersHash zip ignores, conf.head.v1Compatibility)
+              (layersHash, conf.head.v1Compatibility)
 
 
-        val layersMap: Seq[Future[(String, Option[String])]] =
+        val layersMap: Seq[Future[(String, String)]] =
           for
-            (hash, ignore) <- hashesAndIgnore
+            hash <- layerHashes
           yield executor:
             val idFile = existingIndexDirectory / hash
-            if !ignore
+            if !idFile.exists
             then
-              if !idFile.exists
-              then
-                val dirName = UUID.randomUUID().toString
-                val tmpLayerDir = tmpDirectory / dirName
+              val dirName = UUID.randomUUID().toString
+              val tmpLayerDir = tmpDirectory / dirName
 
-                tmpLayerDir.createDirectories()
+              tmpLayerDir.createDirectories()
 
-                (tmpLayerDir / "VERSION").appendLine("1.0")
+              (tmpLayerDir / "VERSION").appendLine("1.0")
 
-                Retry.retry(retryCount)(downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy.map(HttpProxy.toHost)))
+              Retry.retry(retryCount)(downloadBlob(dockerImage, Layer(hash), tmpLayerDir / "layer.tar", timeout, proxy = proxy.map(HttpProxy.toHost)))
 
-                val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
+              val layerHash = Hash.sha256(tmpLayerDir / "layer.tar" toJava)
 
-                lock.withLockInDirectory(existingIndexDirectory.toJava):
-                  if !idFile.exists
-                  then
-                    val layerPath: File = imageDirectoryValue / layerHash
-                    //tmpLayerDir.moveTo(layerPath)
-                    if !layerPath.exists
-                    then java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
-                    else tmpLayerDir.delete()
+              lock.withLockInDirectory(existingIndexDirectory.toJava):
+                if !idFile.exists
+                then
+                  val layerPath: File = imageDirectoryValue / layerHash
+                  //tmpLayerDir.moveTo(layerPath)
+                  if !layerPath.exists
+                  then java.nio.file.Files.move(tmpLayerDir.path, layerPath.path, File.CopyOptions(overwrite = false): _*)
+                  else tmpLayerDir.delete()
 
-                    idFile.createFile()
-                    idFile write layerHash
-                    (hash, Some(layerHash))
-                  else
-                    tmpLayerDir.delete()
-                    (hash, Some(idFile.contentAsString))
+                  idFile.createFile()
+                  idFile write layerHash
+                  (hash, layerHash)
+                else
+                  tmpLayerDir.delete()
+                  (hash, idFile.contentAsString)
 
-              else (hash, Some(idFile.contentAsString))
-            else (hash, None)
+            else (hash, idFile.contentAsString)
 
         val layersHashMap = Await.result(Future.sequence(layersMap), Duration.Inf).toMap
 
@@ -195,7 +192,7 @@ object ImageDownloader {
         (imageDirectoryValue / configName) write configString
 
         val layerFiles =
-          hashesAndIgnore.map(_._1).flatMap(l => layersHashMap(l)).reverse.map: l =>
+          layerHashes.map(l => layersHashMap(l)).reverse.map: l =>
           //hashesAndIgnore.map(_._1).flatMap(l => layersHashMap(l)).map: l =>
             l + "/layer.tar"
 
