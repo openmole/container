@@ -104,7 +104,7 @@ object Singularity {
     useFakeroot: Boolean = false,
     singularityWorkdir: Option[File] = None,
     output: PrintStream = tool.outputLogger,
-    error: PrintStream = tool.outputLogger) = {
+    error: PrintStream = tool.outputLogger) =
     import better.files._
 
     val id = UUID.randomUUID().toString
@@ -112,7 +112,7 @@ object Singularity {
     val buildDirectory = tmpDirectory.toScala / id
     buildDirectory.createDirectoryIfNotExists(createParents = true)
 
-    try {
+    try
       def variables =
         image.env.getOrElse(Seq.empty).map { e =>
           val name = e.takeWhile(_ != '=')
@@ -145,23 +145,35 @@ object Singularity {
 
       def fakeroot = if (useFakeroot) Seq("--fakeroot") else Seq()
       def singularityWorkdirArgument =
-        singularityWorkdir match {
+        singularityWorkdir match
           case Some(w) => Seq("--workdir", w.getAbsolutePath)
           case None => Seq()
-        }
 
       val absoluteRootFS = (image.file.toScala / FlatImage.rootfsName).toJava.getAbsolutePath
-      def touchContainerFile(f: String, directory: Boolean) = {
+      def touchContainerFile(f: String, directory: Boolean) =
         val localFile = new java.io.File((image.file.toScala / FlatImage.rootfsName).toJava, f)
-        if (!localFile.exists())
-          if (!directory) {
+        if !localFile.exists()
+        then
+          if !directory
+          then
             localFile.getParentFile.mkdirs()
             localFile.toScala.touch()
-          } else localFile.mkdirs()
-      }
+          else localFile.mkdirs()
 
       touchContainerFile(runFile, false)
-      bind foreach { case (l, d) => touchContainerFile(d, new java.io.File(l).isDirectory) }
+
+      val absoluteBind =
+        bind.map: (l, d) =>
+          val nd =
+            if java.io.File(d).isAbsolute
+            then d
+            else
+              wd match
+                case Some(wd) => java.io.File(wd, d).getAbsolutePath
+                case None => java.io.File("/", d).getAbsolutePath
+          l -> nd
+
+      absoluteBind foreach { (l, d) => touchContainerFile(d, new java.io.File(l).isDirectory) }
 
       // Create directory requiered by singularity
       def createDirectories() =
@@ -183,7 +195,7 @@ object Singularity {
           Seq(
             "--home", s"$absoluteRootFS/root:/root",
             "-B", s"$absoluteRootFS/tmp:/tmp",
-            "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ bind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
+            "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++ absoluteBind.flatMap { case (f, t) => Seq("-B", s"$f:$t") } ++
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
             Seq(absoluteRootFS, "sh", s"/$runFile"),
         env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
@@ -191,7 +203,6 @@ object Singularity {
         err = error)
 
       // TODO copy new directories at the root in the sandbox back to rootfs ?
-    } finally buildDirectory.delete()
-  }
+    finally buildDirectory.delete()
 
 }
