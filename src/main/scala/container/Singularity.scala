@@ -17,7 +17,7 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import container.ImageBuilder.checkImageFile
+import container.ImageBuilder.{checkImageFile, extractImage}
 import container.OCI.ConfigurationData
 
 import java.io.{File, PrintStream}
@@ -71,11 +71,25 @@ object Singularity:
     sif: File,
     singularityCommand: String = "singularity",
     logger: PrintStream = tool.outputLogger): SingularityImageFile =
-    import better.files.*
 
     val file = if !sif.getName.endsWith("sif") then java.io.File(sif.getParentFile, sif.getName + ".sif") else sif
 
+
+    def setPermissions(f: java.io.File): Unit =
+      import scala.jdk.CollectionConverters.*
+      util.Try(java.nio.file.Files.getPosixFilePermissions(f.toPath)).map(_.asScala.toSet).foreach: permissions =>
+        val permissionSet = scala.collection.mutable.Set[PosixFilePermission]()
+
+        if permissions.contains(PosixFilePermission.OWNER_READ) then permissionSet ++= Seq(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ)
+        if permissions.contains(PosixFilePermission.OWNER_WRITE) then permissionSet ++= Seq(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
+        if permissions.contains(PosixFilePermission.OWNER_EXECUTE) then permissionSet ++= Seq(PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE)
+
+        util.Try(java.nio.file.Files.setPosixFilePermissions(f.toPath, permissionSet.asJava))
+
+    import better.files.*
     val rootDirectory = image.file.toScala / FlatImage.rootfsName
+
+    rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
     ProcessUtil.execute(
       Seq(singularityCommand, "build", "--force", "--fix-perms", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
@@ -213,6 +227,16 @@ object Singularity:
     overlay.delete()
     ProcessUtil.execute(Seq(singularityCommand, "overlay", "create", "-S", "-s", overlaySize.toMegabytes.intValue.toString, overlay.getAbsolutePath), out = output, err = error)
     overlay
+
+  def extractFile(
+    image: SingularityImageFile,
+    source: String,
+    directory: File,
+    tmpDirectory: File,
+    overlay: Option[OverlayImg] = None) =
+    val bindDirectory = s"/${UUID.randomUUID().toString}"
+    def command = Seq(s"cp -rf $source $bindDirectory")
+    executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory))
 
   def executeImage(
     image: SingularityImageFile,

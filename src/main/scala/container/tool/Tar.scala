@@ -100,7 +100,7 @@ object Tar {
 
 
 
-  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None, permissive: Boolean = false) =
+  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) =
     import java.nio.file.{Files, Paths}
     import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
     import java.io.FileInputStream
@@ -112,23 +112,9 @@ object Tar {
 
       val permissionSet = scala.collection.mutable.Set[PosixFilePermission]()
 
-      if (mode & 0x100) != 0
-      then
-        if permissive
-        then permissionSet ++= Seq(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ)
-        else permissionSet += PosixFilePermission.OWNER_READ
-
-      if (mode & 0x080) != 0
-      then
-        if permissive
-        then permissionSet ++= Seq(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
-        else permissionSet += PosixFilePermission.OWNER_WRITE
-
-      if (mode & 0x040) != 0
-      then
-        if permissive
-        then permissionSet ++= Seq(PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE)
-        else permissionSet += PosixFilePermission.OWNER_EXECUTE
+      if (mode & 0x100) != 0 then permissionSet += PosixFilePermission.OWNER_READ
+      if (mode & 0x080) != 0 then permissionSet += PosixFilePermission.OWNER_WRITE
+      if (mode & 0x040) != 0 then permissionSet += PosixFilePermission.OWNER_EXECUTE
 
       if (mode & 0x020) != 0 then permissionSet += PosixFilePermission.GROUP_READ
       if (mode & 0x010) != 0 then permissionSet += PosixFilePermission.GROUP_WRITE
@@ -137,19 +123,6 @@ object Tar {
       if (mode & 0x004) != 0 then permissionSet += PosixFilePermission.OTHERS_READ
       if (mode & 0x002) != 0 then permissionSet += PosixFilePermission.OTHERS_WRITE
       if (mode & 0x001) != 0 then permissionSet += PosixFilePermission.OTHERS_EXECUTE
-
-      permissionSet += PosixFilePermission.OWNER_READ
-      permissionSet += PosixFilePermission.OWNER_WRITE
-      permissionSet += PosixFilePermission.OWNER_EXECUTE
-
-      permissionSet += PosixFilePermission.GROUP_READ
-      permissionSet += PosixFilePermission.GROUP_WRITE
-      permissionSet += PosixFilePermission.GROUP_EXECUTE
-
-      permissionSet += PosixFilePermission.OTHERS_READ
-      permissionSet += PosixFilePermission.OTHERS_WRITE
-      permissionSet += PosixFilePermission.OTHERS_EXECUTE
-
 
       val f = file.toRealPath().toFile
 

@@ -42,9 +42,9 @@ object ImageBuilder {
 
       layers.zipWithIndex.foreach: (layerName, i) =>
         //println(i + "  " + layerName)
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))), permissive = true)
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
         removeWhiteouts(destination)
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))), permissive = true)
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
 
     val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
     val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
