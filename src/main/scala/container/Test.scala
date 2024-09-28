@@ -43,10 +43,19 @@ object Test extends App {
   //    workDirectory = Some("/tmp"),
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
-  Singularity.executeFlatImage(
-    flattenedImage,
-    File("/tmp/").toJava,
-    Seq("apt update"))
+  val sifImage = File("/tmp/image.sif")
+  val buildSif = Singularity.buildSIF(flattenedImage, sifImage.toJava)
+
+  val overlayFile = File("/tmp/overlay.img")
+  val overlay = Singularity.createOverlay(overlayFile.toJava)
+
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("ls -la /var/lib/python/python3.9_installed", "rm /var/lib/python/python3.9_installed", "ls -la /var/lib/python/"), bind = Seq("/tmp/test" -> "/youpi/test"))
+
+
+//  Singularity.executeFlatImage(
+//    flattenedImage,
+//    File("/tmp/").toJava,
+//    Seq("apt update"))
 
   //  Docker.executeFlatImage(
   //    flattenedImage,

@@ -30,12 +30,11 @@ object ImageBuilder {
   case class DirectoryFileCollision(file: File) extends Exception
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
 
-  def extractImage(file: File, extractDirectory: File, compressed: Boolean = false): SavedImage = {
+  def extractImage(file: File, extractDirectory: File, compressed: Boolean = false): SavedImage =
     if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
     extractDirectory.mkdirs()
     Tar.extract(file, extractDirectory, compressed = compressed)
     SavedImage(extractDirectory)
-  }
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
     def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
@@ -43,9 +42,9 @@ object ImageBuilder {
 
       layers.zipWithIndex.foreach: (layerName, i) =>
         //println(i + "  " + layerName)
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))), permissive = true)
         removeWhiteouts(destination)
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
+        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))), permissive = true)
 
     val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
     val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get

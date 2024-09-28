@@ -21,11 +21,10 @@ import scala.sys.process.Process
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package object container {
+package object container:
 
-  object FlatImage {
+  object FlatImage:
     val rootfsName = "rootfs"
-  }
 
   case class FlatImage(
     file: File,
@@ -35,4 +34,3 @@ package object container {
     command: Option[String] = None)
 
   case class SavedImage(file: File)
-}
