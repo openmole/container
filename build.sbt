@@ -34,7 +34,7 @@ publishArtifact in Test in ThisBuild := false
 //publishArtifact := false
 pomIncludeRepository in ThisBuild := { _ => false }
 
-ThisBuild / publishTo := sonatypePublishToBundle.value
+publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository in ThisBuild := { _ => false }
 
