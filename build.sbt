@@ -25,12 +25,16 @@ scalacOptions ++= Seq("-Xtarget:11", "-language:higherKinds", "-language:postfix
 
 /* Publish */
 
-publishMavenStyle in ThisBuild := true
+//import xerial.sbt.Sonatype.sonatypeCentralHost
+
+//ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
+
+ThisBuild / publishMavenStyle := true
 publishArtifact in Test in ThisBuild := false
 //publishArtifact := false
 pomIncludeRepository in ThisBuild := { _ => false }
 
-publishTo in ThisBuild := sonatypePublishToBundle.value
+ThisBuild / publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository in ThisBuild := { _ => false }
 

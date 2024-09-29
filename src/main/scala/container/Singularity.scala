@@ -92,7 +92,7 @@ object Singularity:
     rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
     ProcessUtil.execute(
-      Seq(singularityCommand, "build", "--force", "--fix-perms", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
+      Seq(singularityCommand, "build", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
       logger,
       logger)
 
@@ -227,6 +227,20 @@ object Singularity:
     overlay.delete()
     ProcessUtil.execute(Seq(singularityCommand, "overlay", "create", "-S", "-s", overlaySize.toMegabytes.intValue.toString, overlay.getAbsolutePath), out = output, err = error)
     overlay
+
+  def clearOverlay(
+    overlay: OverlayImg,
+    tmpDirectory: File,
+    output: PrintStream = tool.outputLogger,
+    error: PrintStream = tool.outputLogger): OverlayImg =
+    val overlayDirectory  = tmpDirectory.toScala / "overlay"
+    try
+      (overlayDirectory / "upper").createDirectories()
+      (overlayDirectory / "work").createDirectories()
+
+      ProcessUtil.execute(Seq("mkfs.ext3", "-F", "-d", overlayDirectory.toJava.getAbsolutePath, overlay.getAbsolutePath), out = output, err = error)
+      overlay
+    finally overlayDirectory.delete()
 
   def extractFile(
     image: SingularityImageFile,
