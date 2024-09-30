@@ -24,14 +24,14 @@ import container.Extractor._
 import container.OCI._
 import container.tool.Tar
 
-object ImageBuilder {
+object ImageBuilder:
   case class FileNotFound(file: File) extends Exception
   case class InvalidImage(file: File) extends Exception
   case class DirectoryFileCollision(file: File) extends Exception
   case class CommandExecutionError(status: Int, stdout: String, stderr: String) extends Exception
 
   def extractImage(file: File, extractDirectory: File, compressed: Boolean = false): SavedImage =
-    if (!isAnArchive(file.getAbsolutePath)) throw InvalidImage(file)
+    if !isAnArchive(file.getAbsolutePath) then throw InvalidImage(file)
     extractDirectory.mkdirs()
     Tar.extract(file, extractDirectory, compressed = compressed)
     SavedImage(extractDirectory)
@@ -46,10 +46,9 @@ object ImageBuilder {
         removeWhiteouts(destination)
         Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
 
+
     val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
     val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
-
-    //println(image.file.toScala / manifest.Config contentAsString)
 
     val rootfs = workDirectory.toScala / FlatImage.rootfsName
     extractLayers(image, manifest.Layers, rootfs.toJava)
@@ -69,4 +68,4 @@ object ImageBuilder {
       command = flatImage.command)
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
-}
+

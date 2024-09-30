@@ -94,7 +94,7 @@ object ImageDownloader {
     timeout: Time,
     retry: Option[Int] = None,
     executor: Executor = Executor.sequential,
-    proxy: Option[HttpProxy] = None): SavedImage = {
+    proxy: Option[HttpProxy] = None): SavedImage = 
     import better.files._
 
     val retryCount = retry.getOrElse(0)
@@ -215,5 +215,4 @@ object ImageDownloader {
         SavedImage(imageDirectoryValue.toJava)
       case util.Failure(e) => throw ImageNotFound(dockerImage, Some(e))
 
-  }
 }

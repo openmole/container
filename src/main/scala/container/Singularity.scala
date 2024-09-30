@@ -38,42 +38,19 @@ object Singularity:
     layers: Seq[String],
     command: Option[String] = None)
 
+  object OverlayImg:
+    def file(o: OverlayImg): File = o
+
   opaque type OverlayImg = File
-
-  //  def buildImage(image: SavedImage, workDirectory: File): BuiltSingularityImage = {
-  //    val preparedImage = ImageBuilder.prepareImage(ImageBuilder.extractImage(image, workDirectory))
-  //    ImageBuilder.buildImage(preparedImage, workDirectory)
-  //    BuiltSingularityImage(workDirectory, preparedImage.configurationData, preparedImage.command)
-  //  }
-
-//  def build(image: SavedImage, archive: File, singularityCommand: String = "singularity"): SingularityImageFile =
-//    //if (image.compressed) BuiltDockerImage(image.file, image.imageName, image.command)
-//    //val path = image.file.toScala.pathAsString
-//    //BFile(path + "/manifest.json").delete()
-//
-//    val tarArchive =
-//      val tmp = archive.toScala.parent / (archive.getName + ".tar")
-//      Tar.archive(image.file, tmp.toJava)
-//      tmp.toJava
-//
-//    try
-//      s"$singularityCommand build ${archive.getAbsolutePath} docker-archive://${tarArchive.getAbsolutePath}".!!
-//      SingularityImageFile(
-//        archive)
-//    finally tarArchive.delete()
-
-//  def execute(image: SingularityImageFile, command: Option[Seq[String]] = None, singularityCommand: String = "singularity") =
-//    val file = image.file.getAbsolutePath
-//    Seq(singularityCommand, "run", file) ++ command.getOrElse(image.command) !!
 
   def buildSIF(
     image: FlatImage,
     sif: File,
+    permissive: Boolean = true,
     singularityCommand: String = "singularity",
     logger: PrintStream = tool.outputLogger): SingularityImageFile =
 
     val file = if !sif.getName.endsWith("sif") then java.io.File(sif.getParentFile, sif.getName + ".sif") else sif
-
 
     def setPermissions(f: java.io.File): Unit =
       import scala.jdk.CollectionConverters.*
@@ -89,7 +66,7 @@ object Singularity:
     import better.files.*
     val rootDirectory = image.file.toScala / FlatImage.rootfsName
 
-    rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
+    if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
     ProcessUtil.execute(
       Seq(singularityCommand, "build", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
@@ -114,6 +91,7 @@ object Singularity:
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
     singularityWorkdir: Option[File] = None,
+    userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
     import better.files._
@@ -187,8 +165,9 @@ object Singularity:
 
       // Create directory requiered by singularity
       def createDirectories() =
-        def relativeWd = wd.toSeq.map(_.dropWhile(_.isSpaceChar).dropWhile(_ == '/'))
-        (Seq("dev", "root", "tmp", "var/tmp") ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+        def removeHeadSlash(d: String) = d.dropWhile(_.isSpaceChar).dropWhile(_ == '/')
+        def relativeWd = wd.toSeq.map(removeHeadSlash)
+        (Seq("dev", "root", "tmp", "var/tmp", removeHeadSlash(userHome)) ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
 
       createDirectories()
 
@@ -197,13 +176,14 @@ object Singularity:
           singularityCommand,
           "--silent",
           "exec",
+          "--no-home",
           "--cleanenv",
           "-w") ++
           fakeroot ++
           singularityWorkdirArgument ++
           pwd ++
           Seq(
-            "--home", s"$absoluteRootFS/root:/root",
+            "--home", s"$absoluteRootFS$userHome:$userHome",
             "-B", s"$absoluteRootFS/tmp:/tmp",
             "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++
             absoluteBind.flatMap ((f, t) => Seq("-B", s"$f:$t")) ++
@@ -263,6 +243,7 @@ object Singularity:
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
     singularityWorkdir: Option[File] = None,
+    userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
     import better.files._
@@ -281,6 +262,7 @@ object Singularity:
 
       val cmd =
         s"""
+           |mkdir -p $userHome
            |${variables.map { case (n, v) => s"""export $n="$v"""" }.mkString("\n")}
            |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("&& \\" + "\n")}
         """.stripMargin
@@ -326,6 +308,7 @@ object Singularity:
           singularityCommand,
           "--silent",
           "exec",
+          "--home", userHome,
           "--cleanenv",
           "--no-home") ++
           overlayOption ++

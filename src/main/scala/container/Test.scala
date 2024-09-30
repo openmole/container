@@ -29,8 +29,9 @@ object Test extends App {
 //  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
 //  File("/tmp/container").delete(swallowIOExceptions = true)
 
-  //val saved = ImageDownloader.downloadContainerImage(RegistryImage("julia", "1.9.4"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
-  val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(RegistryImage("julia", "1.9.4"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
   //val saved = ImageBuilder.extractImage(File("/tmp/test.tar").toJava, File("/tmp/extract").toJava)
 
@@ -43,19 +44,15 @@ object Test extends App {
   //    workDirectory = Some("/tmp"),
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
+
+  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("whoami", "echo $HOME", "touch ~/test.test.test"))
+
   val sifImage = File("/tmp/image.sif")
   val buildSif = Singularity.buildSIF(flattenedImage, sifImage.toJava)
+  val overlay = Singularity.createOverlay(File("/tmp/overlay.img").toJava)
 
-  val overlayFile = File("/tmp/overlay.img")
-  val overlay = Singularity.createOverlay(overlayFile.toJava)
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("whoami", "echo $HOME", "ls -la ~"))
 
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("rm /var/lib/python/python3.9_installed", "ls -la /var/lib/python/"))
-
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("echo 2", "ls -la /var/lib/python/"))
-
-  Singularity.clearOverlay(overlay = overlay, File("/tmp/overlay").toJava)
-
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("echo 3", "ls -la /var/lib/python/"))
 
   //  Singularity.executeFlatImage(
 //    flattenedImage,
