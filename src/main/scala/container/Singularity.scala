@@ -227,10 +227,11 @@ object Singularity:
     source: String,
     directory: File,
     tmpDirectory: File,
-    overlay: Option[OverlayImg] = None) =
+    overlay: Option[OverlayImg] = None,
+    singularityWorkdir: Option[File] = None) =
     val bindDirectory = s"/${UUID.randomUUID().toString}"
     def command = Seq(s"cp -rf $source $bindDirectory")
-    executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory))
+    executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory), singularityWorkdir = singularityWorkdir)
 
   def executeImage(
     image: SingularityImageFile,
