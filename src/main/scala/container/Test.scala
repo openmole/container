@@ -52,7 +52,7 @@ object Test extends App {
   val overlay = Singularity.createOverlay(File("/tmp/overlay.img").toJava)
 
   Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("whoami", "echo $HOME", "ls -la ~"))
-
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, tmpFS = true, commands = Seq("whoami", "echo $HOME", "ls -la ~"))
 
   //  Singularity.executeFlatImage(
 //    flattenedImage,

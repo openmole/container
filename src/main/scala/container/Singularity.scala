@@ -24,6 +24,7 @@ import java.io.{File, PrintStream}
 import java.util.UUID
 import scala.sys.process.*
 import better.files.*
+import better.files.File.CopyOptions
 import container.tool.{Tar, outputLogger}
 import squants.information.*
 
@@ -38,10 +39,7 @@ object Singularity:
     layers: Seq[String],
     command: Option[String] = None)
 
-  object OverlayImg:
-    def file(o: OverlayImg): File = o
-
-  opaque type OverlayImg = File
+  case class OverlayImage(image: File)
 
   def buildSIF(
     image: FlatImage,
@@ -90,6 +88,7 @@ object Singularity:
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
+    verbose: Boolean = false,
     singularityWorkdir: Option[File] = None,
     userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
@@ -169,6 +168,11 @@ object Singularity:
         def relativeWd = wd.toSeq.map(removeHeadSlash)
         (Seq("dev", "root", "tmp", "var/tmp", removeHeadSlash(userHome)) ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
 
+      def execute =
+        if verbose
+        then Seq("sh", "-x", s"/$runFile")
+        else Seq("sh", s"/$runFile")
+
       createDirectories()
 
       ProcessUtil.execute(
@@ -188,7 +192,7 @@ object Singularity:
             "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++
             absoluteBind.flatMap ((f, t) => Seq("-B", s"$f:$t")) ++
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
-            Seq(absoluteRootFS, "sh", s"/$runFile"),
+            Seq(absoluteRootFS) ++ execute,
         env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
         out = output,
         err = error)
@@ -196,53 +200,69 @@ object Singularity:
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     finally buildDirectory.delete()
 
-
   def createOverlay(
     overlay: File,
     overlaySize: Information = Gibibytes(50),
     singularityCommand: String = "singularity",
     output: PrintStream = tool.outputLogger,
-    error: PrintStream = tool.outputLogger): OverlayImg =
+    error: PrintStream = tool.outputLogger): OverlayImage =
     overlay.getParentFile.mkdirs()
     overlay.delete()
     ProcessUtil.execute(Seq(singularityCommand, "overlay", "create", "-S", "-s", overlaySize.toMegabytes.intValue.toString, overlay.getAbsolutePath), out = output, err = error)
-    overlay
+    OverlayImage(overlay)
+
+  def copyOverlay(
+    overlay: OverlayImage,
+    copy: File): OverlayImage =
+    import better.files.*
+    copy.getParentFile.mkdirs()
+    OverlayImage(overlay.image.toScala.copyTo(copy.toScala, true).toJava)
 
   def clearOverlay(
-    overlay: OverlayImg,
+    overlay: OverlayImage,
     tmpDirectory: File,
     output: PrintStream = tool.outputLogger,
-    error: PrintStream = tool.outputLogger): OverlayImg =
+    error: PrintStream = tool.outputLogger): OverlayImage =
     val overlayDirectory  = tmpDirectory.toScala / "overlay"
     try
       (overlayDirectory / "upper").createDirectories()
       (overlayDirectory / "work").createDirectories()
 
-      ProcessUtil.execute(Seq("mkfs.ext3", "-F", "-d", overlayDirectory.toJava.getAbsolutePath, overlay.getAbsolutePath), out = output, err = error)
+      ProcessUtil.execute(Seq("mkfs.ext3", "-F", "-d", overlayDirectory.toJava.getAbsolutePath, overlay.image.getAbsolutePath), out = output, err = error)
       overlay
     finally overlayDirectory.delete()
 
-  def extractFile(
-    image: SingularityImageFile,
-    source: String,
+  def extractFiles(
+    image: SingularityImageFile | FlatImage,
+    source: Seq[String],
     directory: File,
     tmpDirectory: File,
-    overlay: Option[OverlayImg] = None,
-    singularityWorkdir: Option[File] = None) =
-    val bindDirectory = s"/${UUID.randomUUID().toString}"
-    def command = Seq(s"cp -rf $source $bindDirectory")
-    executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory), singularityWorkdir = singularityWorkdir)
+    overlay: Option[OverlayImage] = None): Unit =
+    import better.files.*
+    val workDirectory = Some(tmpDirectory.toScala / "singularity").map(_.createDirectories().toJava)
+    image match
+      case image: SingularityImageFile =>
+        val bindDirectory = s"/${UUID.randomUUID().toString}"
+        def command = source.map(source => s"cp -rf $source $bindDirectory")
+        executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory), singularityWorkdir = workDirectory)
+      case image: FlatImage =>
+        val rootDirectory = image.file.toScala / FlatImage.rootfsName
+        source.foreach: s =>
+          (rootDirectory / s).copyToDirectory(directory.toScala)
+
 
   def executeImage(
     image: SingularityImageFile,
     tmpDirectory: File,
-    overlay: Option[OverlayImg] = None,
+    overlay: Option[OverlayImage] = None,
+    tmpFS: Boolean = false,
     commands: Seq[String] = Seq.empty,
     singularityCommand: String = "singularity",
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
+    verbose: Boolean = false,
     singularityWorkdir: Option[File] = None,
     userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
@@ -302,7 +322,15 @@ object Singularity:
 
       def overlayOption: Seq[String] =
         overlay.toSeq.flatMap: o =>
-          Seq("--overlay", o.getAbsolutePath)
+          Seq("--overlay", o.image.getAbsolutePath)
+
+      def tmpFSOption =
+        if tmpFS then Seq("--writable-tmpfs") else Seq()
+
+      def execute =
+        if verbose
+        then Seq("sh", "-x", s"/$runFile")
+        else Seq("sh", s"/$runFile")
 
       ProcessUtil.execute(
         Seq(
@@ -312,13 +340,14 @@ object Singularity:
           "--home", userHome,
           "--cleanenv",
           "--no-home") ++
+          tmpFSOption ++
           overlayOption ++
           fakeroot ++
           singularityWorkdirArgument ++
           pwd ++
           absoluteBind.flatMap((f, t) => Seq("-B", s"$f:$t")) ++
           Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
-          Seq(image.file.getAbsolutePath, "sh", s"/$runFile"),
+          Seq(image.file.getAbsolutePath) ++ execute,
         env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
         out = output,
         err = error)
