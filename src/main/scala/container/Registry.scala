@@ -227,7 +227,14 @@ object Registry {
 
   def decodeConfig(configContent: String) = decode[ImageJSON](configContent).toTry
   def decodeTopLevelManifest(manifestContent: String) = decode[List[TopLevelImageManifest]](manifestContent).map(_.head).toTry
-  def decodeManifest(manifestContent: String) = decode[ImageManifestV2Schema1](manifestContent).toTry
+  def decodeManifest(manifestContent: String): util.Try[ImageManifest] =
+    val parsed = parse(manifestContent).toTry.get
+
+    parsed.hcursor.get[String]("mediaType").toTry.get match
+      case "application/vnd.oci.image.index.v1+json" => decode[ImageManifestV2Schema1](manifestContent).toTry
+      case "application/vnd.docker.distribution.manifest.list.v2+json" => decode[ImageManifestV2Schema2List](manifestContent).toTry
+      case "application/vnd.docker.distribution.manifest.v2+json" => decode[ImageManifestV2Schema2](manifestContent).toTry
+      case other => throw UserBadDataError(s"Unknown media type $other in manifest:\n${manifestContent}")
 
   object Config:
     def workDirectory(config: ImageJSON) = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)

@@ -1,7 +1,5 @@
 package container
 
-import container.DockerMetadata.ImageManifestV2Schema1.ManifestField.Platform
-
 /**
  * Copyright (C) 2017 Jonathan Passerat-Palmbach
  *
@@ -221,23 +219,7 @@ object DockerMetadata {
     signature: Option[String],
     `protected`: Option[String])
 
-  object ImageManifestV2Schema1:
-    object ManifestField:
-      //case class Annotations(`vnd.docker.reference.digest`: Option[String], `vnd.docker.reference.type`: Option[String])
-      case class Platform(architecture: String, os: String)
-
-    case class ManifestField(
-      //annotations: Option[Manifest.Annotations],
-      digest: String,
-      mediaType: String,
-      platform: ManifestField.Platform)
-
-    object ManifestV2:
-      case class Media(mediaType: String, digest: String, size: Int)
-
-    case class ManifestV2(
-      config: ManifestV2.Media,
-      layers: Seq[ManifestV2.Media])
+  sealed trait ImageManifest
 
   /**
    * Registry image Manifest of an image in a repo according to Docker image spec v1
@@ -254,10 +236,28 @@ object DockerMetadata {
     history: Option[List[V1History]],
     schemaVersion: Option[Int],
     // <--- extra fields not part of the spec: implementation specific --->
-    signatures: Option[List[Signature]] = None,
+    signatures: Option[List[Signature]] = None) extends ImageManifest
 
-    // Schema 2
-    manifests: Option[Seq[ImageManifestV2Schema1.ManifestField]])
+  // Schema 2
+  object ImageManifestV2Schema2:
+    object ManifestField:
+      //case class Annotations(`vnd.docker.reference.digest`: Option[String], `vnd.docker.reference.type`: Option[String])
+      case class Platform(architecture: String, os: String)
+
+    case class ManifestField(
+      //annotations: Option[Manifest.Annotations],
+      digest: String,
+      mediaType: String,
+      platform: ManifestField.Platform)
+
+    case class Media(mediaType: String, digest: String, size: Int)
+
+  case class ImageManifestV2Schema2(
+    config: ImageManifestV2Schema2.Media,
+    layers: Seq[ImageManifestV2Schema2.Media]) extends ImageManifest
+
+  case class ImageManifestV2Schema2List(
+    manifests: Seq[ImageManifestV2Schema2.ManifestField]) extends ImageManifest
 
   // TODO ImageManifestV2Schema2 (ref: https://docs.docker.com/registry/spec/manifest-v2-2/) (example: https://gist.github.com/harche/6f29c6fe8479cb6334d2)
 

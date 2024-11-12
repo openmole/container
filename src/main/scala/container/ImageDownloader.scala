@@ -100,7 +100,7 @@ object ImageDownloader {
     val retryCount = retry.getOrElse(0)
 
     val manifestString = Retry.retry(retryCount)(downloadManifest(dockerImage, timeout, proxy = proxy.map(HttpProxy.toHost)))
-    val decodedManifest: util.Try[ImageManifestV2Schema1] = decodeManifest(manifestString)
+    val decodedManifest = decodeManifest(manifestString)
 
     decodedManifest match
       case util.Success(manifestValue) =>
@@ -112,24 +112,31 @@ object ImageDownloader {
         imageDirectoryValue.createDirectoryIfNotExists()
         existingIndexDirectory.createDirectoryIfNotExists()
 
+
+        def fromManifestV2(manifestValue: ImageManifestV2Schema2) =
+          val layers = manifestValue.layers.map(_.digest)
+
+          val configString =
+            val url = s"""${baseURL(dockerImage)}/blobs/${manifestValue.config.digest}"""
+            val headers = Seq("Accept" -> manifestValue.config.mediaType)
+            Retry.retry(retryCount)(download(url, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
+
+          (layers.reverse, configString)
+
         val (layerHashes, configString) =
-          manifestValue.manifests match
-            case Some(manifests) =>
+          manifestValue match
+            case imv: ImageManifestV2Schema2List =>
               import io.circe.generic.auto.*
+              val manifests = imv.manifests
+              
               val mid = manifests.find(m => m.platform.architecture == "amd64" && m.platform.os == "linux").getOrElse(throw RuntimeException("No image found for amd64 on linux, manifest is " + manifests))
               val query = s"${baseURL(dockerImage)}/manifests/${mid.digest}"
               val headers = Seq("Accept" -> mid.mediaType)
               val manifestString = Retry.retry(retryCount)(download(query, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
-              val manifestValue = decode[ImageManifestV2Schema1.ManifestV2](manifestString).toTry.get
-              val layers = manifestValue.layers.map(_.digest)
-
-              val configString =
-                val url = s"""${baseURL(dockerImage)}/blobs/${manifestValue.config.digest}"""
-                val headers = Seq("Accept" -> manifestValue.config.mediaType)
-                Retry.retry(retryCount)(download(url, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
-
-              (layers.reverse, configString)
-            case None =>
+              val manifestValue = decode[ImageManifestV2Schema2](manifestString).toTry.get
+              fromManifestV2(manifestValue)
+            case manifestValue: ImageManifestV2Schema2 => fromManifestV2(manifestValue)
+            case manifestValue: ImageManifestV2Schema1 =>
               val conf = manifestValue.history.get
               val raw = conf.map(_.v1Compatibility)
 

@@ -28,8 +28,10 @@ object Test extends App {
 
 //  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
 //  File("/tmp/container").delete(swallowIOExceptions = true)
+  val gama = RegistryImage("gamaplatform/gama", "alpha")
+  val julia = RegistryImage("julia", "1.9.4")
 
-  val saved = ImageDownloader.downloadContainerImage(RegistryImage("julia", "1.9.4"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(gama, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
