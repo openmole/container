@@ -187,7 +187,7 @@ object Tar {
               Files.createLink(l.dest, link)
 
       // Set directory right after extraction in case some directory are not writable
-      for r ← directoryData
+      for r <- directoryData
       do
         setMode(r.path, r.mode)
         r.path.toFile.setLastModified(r.time)
