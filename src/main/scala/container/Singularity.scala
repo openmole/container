@@ -247,8 +247,10 @@ object Singularity:
         executeImage(image, tmpDirectory, overlay, commands = command, bind = Seq(directory.getAbsolutePath -> bindDirectory), singularityWorkdir = workDirectory)
       case image: FlatImage =>
         val rootDirectory = image.file.toScala / FlatImage.rootfsName
+
         source.foreach: s =>
-          (rootDirectory / s).copyToDirectory(directory.toScala)
+          val from = java.io.File(rootDirectory.toJava, s)
+          from.toScala.copyToDirectory(directory.toScala)
 
 
   def executeImage(
