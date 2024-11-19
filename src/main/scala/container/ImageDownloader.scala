@@ -112,7 +112,6 @@ object ImageDownloader {
         imageDirectoryValue.createDirectoryIfNotExists()
         existingIndexDirectory.createDirectoryIfNotExists()
 
-
         def fromManifestV2(manifestValue: ImageManifestV2Schema2) =
           val layers = manifestValue.layers.map(_.digest)
 
