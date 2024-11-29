@@ -27,11 +27,12 @@ object Test extends App {
   //val saved = ImageBuilder.extractImage(File("/tmp/debian.tar").toJava, File("/tmp/extract").toJava)
 
 //  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
-//  File("/tmp/container").delete(swallowIOExceptions = true)
+  File("/tmp/container").delete(swallowIOExceptions = true)
   val gama = RegistryImage("gamaplatform/gama", "alpha")
-  val julia = RegistryImage("julia", "1.9.4")
+  val julia = RegistryImage("julia", "1.10.4")
+  val python = RegistryImage("python")
 
-  val saved = ImageDownloader.downloadContainerImage(gama, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(python, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
