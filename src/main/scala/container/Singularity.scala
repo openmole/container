@@ -44,29 +44,30 @@ object Singularity:
   def buildSIF(
     image: FlatImage,
     sif: File,
+    permissive: Boolean = true,
     singularityCommand: String = "singularity",
     logger: PrintStream = tool.outputLogger): SingularityImageFile =
 
     val file = if !sif.getName.endsWith("sif") then java.io.File(sif.getParentFile, sif.getName + ".sif") else sif
 
-//    def setPermissions(f: java.io.File): Unit =
-//      import scala.jdk.CollectionConverters.*
-//      util.Try(java.nio.file.Files.getPosixFilePermissions(f.toPath)).map(_.asScala.toSet).foreach: permissions =>
-//        val permissionSet = scala.collection.mutable.Set[PosixFilePermission]()
-//
-//        if permissions.contains(PosixFilePermission.OWNER_READ) then permissionSet ++= Seq(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ)
-//        if permissions.contains(PosixFilePermission.OWNER_WRITE) then permissionSet ++= Seq(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
-//        if permissions.contains(PosixFilePermission.OWNER_EXECUTE) then permissionSet ++= Seq(PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE)
-//
-//        util.Try(java.nio.file.Files.setPosixFilePermissions(f.toPath, permissionSet.asJava))
+    def setPermissions(f: java.io.File): Unit =
+      import scala.jdk.CollectionConverters.*
+      util.Try(java.nio.file.Files.getPosixFilePermissions(f.toPath)).map(_.asScala.toSet).foreach: permissions =>
+        val permissionSet = scala.collection.mutable.Set[PosixFilePermission]()
+
+        if permissions.contains(PosixFilePermission.OWNER_READ) then permissionSet ++= Seq(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ)
+        if permissions.contains(PosixFilePermission.OWNER_WRITE) then permissionSet ++= Seq(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
+        if permissions.contains(PosixFilePermission.OWNER_EXECUTE) then permissionSet ++= Seq(PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE)
+
+        util.Try(java.nio.file.Files.setPosixFilePermissions(f.toPath, permissionSet.asJava))
 
     import better.files.*
     val rootDirectory = image.file.toScala / FlatImage.rootfsName
 
-    //if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
+    if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
     ProcessUtil.execute(
-      Seq(singularityCommand, "build", "--fix-perms", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
+      Seq(singularityCommand, "build", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
       logger,
       logger)
 

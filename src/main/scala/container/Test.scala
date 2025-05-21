@@ -30,7 +30,7 @@ object Test extends App {
   File("/tmp/container").delete(swallowIOExceptions = true)
   val gama = RegistryImage("gamaplatform/gama", "alpha")
   val julia = RegistryImage("julia", "1.10.4")
-  val python = RegistryImage("openmole/python", "3.10")
+  val python = RegistryImage("python")
 
   val saved = ImageDownloader.downloadContainerImage(python, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
