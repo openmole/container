@@ -28,7 +28,7 @@ import better.files.File.CopyOptions
 import container.tool.{Tar, outputLogger}
 import squants.information.*
 
-import java.nio.file.attribute.{FileAttribute, PosixFilePermission, PosixFilePermissions}
+import java.nio.file.attribute.{PosixFilePermission, PosixFilePermissions}
 
 object Singularity:
 
@@ -49,8 +49,21 @@ object Singularity:
 
     val file = if !sif.getName.endsWith("sif") then java.io.File(sif.getParentFile, sif.getName + ".sif") else sif
 
+//    def setPermissions(f: java.io.File): Unit =
+//      import scala.jdk.CollectionConverters.*
+//      util.Try(java.nio.file.Files.getPosixFilePermissions(f.toPath)).map(_.asScala.toSet).foreach: permissions =>
+//        val permissionSet = scala.collection.mutable.Set[PosixFilePermission]()
+//
+//        if permissions.contains(PosixFilePermission.OWNER_READ) then permissionSet ++= Seq(PosixFilePermission.OWNER_READ, PosixFilePermission.GROUP_READ, PosixFilePermission.OTHERS_READ)
+//        if permissions.contains(PosixFilePermission.OWNER_WRITE) then permissionSet ++= Seq(PosixFilePermission.OWNER_WRITE, PosixFilePermission.GROUP_WRITE, PosixFilePermission.OTHERS_WRITE)
+//        if permissions.contains(PosixFilePermission.OWNER_EXECUTE) then permissionSet ++= Seq(PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE)
+//
+//        util.Try(java.nio.file.Files.setPosixFilePermissions(f.toPath, permissionSet.asJava))
+
     import better.files.*
     val rootDirectory = image.file.toScala / FlatImage.rootfsName
+
+    //if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
     ProcessUtil.execute(
       Seq(singularityCommand, "build", "--fix-perms", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
@@ -152,12 +165,7 @@ object Singularity:
       def createDirectories() =
         def removeHeadSlash(d: String) = d.dropWhile(_.isSpaceChar).dropWhile(_ == '/')
         def relativeWd = wd.toSeq.map(removeHeadSlash)
-        (Seq("dev", "root", "tmp", "var/tmp", removeHeadSlash(userHome)) ++ relativeWd).foreach: dir =>
-          import scala.jdk.CollectionConverters.*
-          val permissionSet = PosixFilePermission.values().toSet
-          val dirFile = (image.file.toScala / FlatImage.rootfsName / dir)
-          dirFile.createDirectoryIfNotExists(createParents = true)
-          java.nio.file.Files.setPosixFilePermissions(dirFile.path, permissionSet.asJava)
+        (Seq("dev", "root", "tmp", "var/tmp", removeHeadSlash(userHome)) ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
 
       def execute =
         if verbose
