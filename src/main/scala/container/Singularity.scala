@@ -287,7 +287,7 @@ object Singularity:
         s"""
            |mkdir -p $userHome
            |${variables.map { case (n, v) => s"""export $n="$v"""" }.mkString("\n")}
-           |${(if (commands.isEmpty) image.command.toSeq else commands).mkString("&& \\" + "\n")}
+           |${(if commands.isEmpty then image.command.toSeq else commands).filterNot(_.trim.isEmpty).mkString("&& \\" + "\n")}
         """.stripMargin
 
       val runFile = "_run_commands.sh"

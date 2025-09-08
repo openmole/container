@@ -9,7 +9,6 @@ object ProcessUtil {
   val processDestroyer = new ShutdownHookProcessDestroyer
 
   def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[(String, String)] = environmentVariables) =
-
     val runtime = Runtime.getRuntime
     val process = runtime.synchronized:
       runtime.exec(
@@ -25,20 +24,18 @@ object ProcessUtil {
     pump.setProcessErrorStream(process.getErrorStream)
 
     processDestroyer.add(process)
-    try {
-      pump.start
+    try
+      pump.start()
       try process.waitFor
-      catch {
+      catch
         case e: Throwable ⇒
           def kill(p: ProcessHandle) = p.destroyForcibly()
           process.descendants().forEach(kill)
           kill(process.toHandle)
-
           throw e
-      } finally {
-        pump.stop
-      }
-    } finally processDestroyer.remove(process)
+      finally
+        pump.stop()
+    finally processDestroyer.remove(process)
     process.exitValue
 
   def environmentVariables = System.getenv().asScala.toSeq
