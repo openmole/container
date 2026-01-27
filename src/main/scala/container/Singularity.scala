@@ -62,7 +62,7 @@ object Singularity:
         util.Try(java.nio.file.Files.setPosixFilePermissions(f.toPath, permissionSet.asJava))
 
     import better.files.*
-    val rootDirectory = image.file.toScala / FlatImage.rootfsName
+    val rootDirectory = FlatImage.root(image).toScala
 
     if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 

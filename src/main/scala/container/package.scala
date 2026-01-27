@@ -26,6 +26,14 @@ package object container:
   object FlatImage:
     val rootfsName = "rootfs"
 
+    def root(flatImage: FlatImage) =
+      import better.files.*
+      (flatImage.file.toScala / rootfsName).toJava
+    
+    def file(flatImage: FlatImage, path: String) =
+      import better.files.*
+      (root(flatImage).toScala / path).toJava
+
   case class FlatImage(
     file: File,
     workDirectory: Option[String],
