@@ -37,7 +37,7 @@ object ImageBuilder:
     SavedImage(extractDirectory)
 
   def copyIntoFlatImage(file: java.io.File, image: FlatImage, destination: String): Unit =
-    val destinationFile = FlatImage.root(image).toScala
+    val destinationFile = FlatImage.root(image).toScala / destination
     destinationFile.toJava.getParentFile.mkdirs()
     file.toScala.copyTo(destinationFile, overwrite = true)
 
