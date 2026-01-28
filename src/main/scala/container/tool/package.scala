@@ -1,8 +1,11 @@
-package container
+package container.tool
 
 import java.io.{ OutputStream, PrintStream }
 
 import scala.sys.process.ProcessLogger
+import java.nio.file.*
+import java.nio.file.StandardCopyOption.*
+import scala.jdk.CollectionConverters.*
 
 /*
  * Copyright (C) 2019 Romain Reuillon
@@ -20,10 +23,28 @@ import scala.sys.process.ProcessLogger
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package object tool {
 
-  def outputLogger = System.out
-  def nullLogger = new PrintStream(new OutputStream {
-    override def write(i: Int): Unit = {}
-  })
-}
+
+
+def outputLogger = System.out
+def nullLogger = new PrintStream(new OutputStream {
+  override def write(i: Int): Unit = {}
+})
+
+
+def copyOrMerge(src: Path, dest: Path): Unit =
+  if Files.isDirectory(src) then
+    dest.toFile.mkdirs()
+    
+    val stream = Files.list(src)
+    try
+      for
+        child <- stream.iterator().asScala
+      do
+        val target = dest.resolve(child.getFileName)
+        copyOrMerge(child, target)
+    finally
+      stream.close()
+  else
+    dest.toFile.getParentFile.mkdirs()
+    Files.copy(src, dest, REPLACE_EXISTING)

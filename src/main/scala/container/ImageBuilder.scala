@@ -38,15 +38,13 @@ object ImageBuilder:
 
   def copyIntoFlatImage(file: java.io.File, image: FlatImage, destination: String): Unit =
     val destinationFile = FlatImage.root(image).toScala / destination
-    destinationFile.toJava.getParentFile.mkdirs()
-    file.toScala.copyTo(destinationFile, overwrite = true)
+    container.tool.copyOrMerge(file.toPath, destinationFile.path)
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
     def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
       destination.toScala.createDirectoryIfNotExists()
 
       layers.zipWithIndex.foreach: (layerName, i) =>
-        //println(i + "  " + layerName)
         Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
         removeWhiteouts(destination)
         Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
