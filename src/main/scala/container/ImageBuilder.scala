@@ -36,6 +36,11 @@ object ImageBuilder:
     Tar.extract(file, extractDirectory, compressed = compressed)
     SavedImage(extractDirectory)
 
+  def copyIntoFlatImage(file: java.io.File, image: FlatImage, destination: String): Unit =
+    val destinationFile = FlatImage.root(image).toScala
+    destinationFile.toJava.getParentFile.mkdirs()
+    file.toScala.copyTo(destinationFile, overwrite = true)
+
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
     def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
       destination.toScala.createDirectoryIfNotExists()
