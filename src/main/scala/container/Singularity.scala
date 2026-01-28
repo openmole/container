@@ -180,7 +180,7 @@ object Singularity:
           singularityCommand,
           "--silent",
           "exec",
-          "--no-home",
+          "--contain",
           "--cleanenv",
           "-w") ++
           fakeroot ++
@@ -339,9 +339,9 @@ object Singularity:
           singularityCommand,
           "--silent",
           "exec",
+          "--contain",
           "--home", userHome,
-          "--cleanenv",
-          "--no-home") ++
+          "--cleanenv") ++
           tmpFSOption ++
           overlayOption ++
           fakeroot ++
