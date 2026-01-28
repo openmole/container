@@ -1,6 +1,6 @@
 
-scalaVersion := "3.3.3"
-crossScalaVersions := Seq("3.3.3")
+scalaVersion := "3.3.5"
+crossScalaVersions := Seq("3.3.5")
 name := "container"
 organization := "org.openmole"
 
