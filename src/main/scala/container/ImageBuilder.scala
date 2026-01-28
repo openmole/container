@@ -37,8 +37,8 @@ object ImageBuilder:
     SavedImage(extractDirectory)
 
   def copyIntoFlatImage(file: java.io.File, image: FlatImage, destination: String): Unit =
-    val destinationFile = FlatImage.root(image).toScala / destination
-    container.tool.copyOrMerge(file.toPath, destinationFile.path)
+    val destinationFile = java.io.File(FlatImage.root(image), destination)
+    container.tool.copyOrMerge(file.toPath, destinationFile.toPath)
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
     def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
