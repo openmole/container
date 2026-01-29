@@ -89,11 +89,11 @@ object Singularity:
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
+    home: Option[String] = None,
     singularityWorkdir: Option[File] = None,
-    userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
-    import better.files._
+    import better.files.*
 
     val id = UUID.randomUUID().toString
     val buildDirectory = tmpDirectory.toScala / id
@@ -105,7 +105,7 @@ object Singularity:
           val name = e.takeWhile(_ != '=')
           val value = e.dropWhile(_ != '=').drop(1)
           (name, value)
-        } ++ environmentVariables
+        } ++ environmentVariables ++ home.map(h => ("HOME", h))
 
       val cmd =
         s"""
@@ -166,7 +166,7 @@ object Singularity:
       def createDirectories() =
         def removeHeadSlash(d: String) = d.dropWhile(_.isSpaceChar).dropWhile(_ == '/')
         def relativeWd = wd.toSeq.map(removeHeadSlash)
-        (Seq("dev", "root", "tmp", "var/tmp", removeHeadSlash(userHome)) ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+        (Seq("dev", "root", "tmp", "var/tmp") ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
 
       def execute =
         if verbose
@@ -181,13 +181,13 @@ object Singularity:
           "--silent",
           "exec",
           "--contain",
+          "--no-home",
           "--cleanenv",
           "-w") ++
           fakeroot ++
           singularityWorkdirArgument ++
           pwd ++
           Seq(
-            "--home", s"$absoluteRootFS$userHome:$userHome",
             "-B", s"$absoluteRootFS/tmp:/tmp",
             "-B", s"$absoluteRootFS/var/tmp:/var/tmp") ++
             absoluteBind.flatMap ((f, t) => Seq("-B", s"$f:$t")) ++
@@ -263,10 +263,10 @@ object Singularity:
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
+    home: Option[String] = None,
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
     singularityWorkdir: Option[File] = None,
-    userHome: String = "/home/user",
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
     import better.files._
@@ -281,11 +281,10 @@ object Singularity:
           val name = e.takeWhile(_ != '=')
           val value = e.dropWhile(_ != '=').drop(1)
           (name, value)
-        } ++ environmentVariables
+        } ++ environmentVariables ++ home.map(h => ("HOME", h))
 
       val cmd =
         s"""
-           |mkdir -p $userHome
            |${variables.map { case (n, v) => s"""export $n="$v"""" }.mkString("\n")}
            |${(if commands.isEmpty then image.command.toSeq else commands).filterNot(_.trim.isEmpty).mkString("&& \\" + "\n")}
         """.stripMargin
@@ -339,8 +338,8 @@ object Singularity:
           singularityCommand,
           "--silent",
           "exec",
+          "--no-home",
           "--contain",
-          "--home", userHome,
           "--cleanenv") ++
           tmpFSOption ++
           overlayOption ++

@@ -32,8 +32,9 @@ object Test extends App {
   val julia = RegistryImage("julia", "1.10.4")
   val python = RegistryImage("python")
   val debian = RegistryImage("debian")
+  val java = RegistryImage("openmole/jvm", "21.3")
 
-  val saved = ImageDownloader.downloadContainerImage(debian, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(java, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
@@ -49,13 +50,16 @@ object Test extends App {
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
 
-  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("whoami", "echo $HOME", "touch ~/test.test.test"))
+  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("scala-cli run --server=false -j 21 --script-snippet  \"println()\""))
+
+  //Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("touch test.test"))
+
 
   val sifImage = File("/tmp/image.sif")
   val buildSif = Singularity.buildSIF(flattenedImage, sifImage.toJava)
   val overlay = Singularity.createOverlay(File("/tmp/overlay.img").toJava)
 
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("whoami", "echo $HOME", "ls -la /home"))
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("scala-cli run --power --offline --server=false -j 21 --script-snippet  \"println()\""))
   //Singularity.executeImage(buildSif, File("/tmp/container").toJava, tmpFS = true, commands = Seq("whoami", "echo $HOME", "ls -la ~"))
 
   //  Singularity.executeFlatImage(
