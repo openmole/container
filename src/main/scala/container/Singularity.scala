@@ -17,14 +17,9 @@ package container
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import container.ImageBuilder.{checkImageFile, extractImage}
-import container.OCI.ConfigurationData
-
 import java.io.{File, PrintStream}
 import java.util.UUID
-import scala.sys.process.*
 import better.files.*
-import better.files.File.CopyOptions
 import container.tool.{Tar, outputLogger}
 import squants.information.*
 
@@ -268,7 +263,7 @@ object Singularity:
     singularityWorkdir: Option[File] = None,
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
-    import better.files._
+    import better.files.*
 
     val id = UUID.randomUUID().toString
     val buildDirectory = tmpDirectory.toScala / id
