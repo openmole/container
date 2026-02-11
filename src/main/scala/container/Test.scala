@@ -29,12 +29,12 @@ object Test extends App {
 //  File("/tmp/docker-repo").delete(swallowIOExceptions = true)
   File("/tmp/container").delete(swallowIOExceptions = true)
   val gama = RegistryImage("gamaplatform/gama", "alpha")
-  val julia = RegistryImage("julia", "1.10.4")
+  val julia = RegistryImage("julia", "1.12.4")
   val python = RegistryImage("python")
   val debian = RegistryImage("debian")
   val java = RegistryImage("openmole/jvm", "21.3")
 
-  val saved = ImageDownloader.downloadContainerImage(java, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(julia, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
@@ -50,7 +50,7 @@ object Test extends App {
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
 
-  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("scala-cli run --server=false -j 21 --script-snippet  \"println()\""))
+  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("echo $HOME", "TERM=dumb julia -e 'using Pkg; Pkg.add(\"JSON\")'"))
 
   //Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("touch test.test"))
 
@@ -59,7 +59,7 @@ object Test extends App {
   val buildSif = Singularity.buildSIF(flattenedImage, sifImage.toJava)
   val overlay = Singularity.createOverlay(File("/tmp/overlay.img").toJava)
 
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("scala-cli run --power --offline --server=false -j 21 --script-snippet  \"println()\""))
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("TERM=dumb julia -e 'using Pkg; Pkg.add(\"JSON\")'")) //scala-cli run --power --offline --server=false -j 21 --script-snippet  \"println()\""))
   //Singularity.executeImage(buildSif, File("/tmp/container").toJava, tmpFS = true, commands = Seq("whoami", "echo $HOME", "ls -la ~"))
 
   //  Singularity.executeFlatImage(

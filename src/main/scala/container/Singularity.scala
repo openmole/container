@@ -89,7 +89,7 @@ object Singularity:
     environmentVariables: Seq[(String, String)] = Vector.empty,
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
-    home: Option[String] = None,
+    home: Option[String] = Some("/home/user"),
     singularityWorkdir: Option[File] = None,
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
@@ -193,7 +193,6 @@ object Singularity:
             absoluteBind.flatMap ((f, t) => Seq("-B", s"$f:$t")) ++
             Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
             Seq(absoluteRootFS) ++ execute,
-        env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
         out = output,
         err = error)
 
@@ -263,7 +262,7 @@ object Singularity:
     bind: Seq[(String, String)] = Vector.empty,
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
-    home: Option[String] = None,
+    home: Option[String] = Some("/home/user"),
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
     singularityWorkdir: Option[File] = None,
@@ -349,7 +348,6 @@ object Singularity:
           absoluteBind.flatMap((f, t) => Seq("-B", s"$f:$t")) ++
           Seq("-B", s"${(buildDirectory / runFile).toJava.getAbsolutePath}:/$runFile") ++
           Seq(image.file.getAbsolutePath) ++ execute,
-        env = ProcessUtil.environmentVariables.filter(_._1 != "SINGULARITY_BINDPATH"),
         out = output,
         err = error)
 

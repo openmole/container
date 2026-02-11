@@ -5,7 +5,7 @@ import org.apache.commons.exec.PumpStreamHandler
 import org.apache.commons.exec.ShutdownHookProcessDestroyer
 import collection.JavaConverters._
 
-object ProcessUtil {
+object ProcessUtil:
   val processDestroyer = new ShutdownHookProcessDestroyer
 
   def execute(cmd: Seq[String], out: PrintStream = System.out, err: PrintStream = System.err, env: Seq[(String, String)] = environmentVariables) =
@@ -39,5 +39,4 @@ object ProcessUtil {
     process.exitValue
 
   def environmentVariables = System.getenv().asScala.toSeq
-}
 
