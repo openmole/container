@@ -31,20 +31,27 @@ def nullLogger = new PrintStream(new OutputStream {
   override def write(i: Int): Unit = {}
 })
 
-
 def copyOrMerge(src: Path, dest: Path): Unit =
-  if Files.isDirectory(src) then
+  if Files.isSymbolicLink(src)
+  then
+    // copy symlink AS symlink (even if broken)
+    dest.getParent.toFile.mkdirs()
+    val linkTarget = Files.readSymbolicLink(src)
+    Files.deleteIfExists(dest)
+    Files.createSymbolicLink(dest, linkTarget)
+  else if Files.isDirectory(src, LinkOption.NOFOLLOW_LINKS) then
     dest.toFile.mkdirs()
-    
     val stream = Files.list(src)
     try
-      for
-        child <- stream.iterator().asScala
-      do
-        val target = dest.resolve(child.getFileName)
-        copyOrMerge(child, target)
+      for child <- stream.iterator().asScala do
+        copyOrMerge(child, dest.resolve(child.getFileName))
     finally
       stream.close()
   else
-    dest.toFile.getParentFile.mkdirs()
-    Files.copy(src, dest, REPLACE_EXISTING)
+    dest.getParent.toFile.mkdirs()
+    Files.copy(
+      src,
+      dest,
+      REPLACE_EXISTING,
+      LinkOption.NOFOLLOW_LINKS
+    )
