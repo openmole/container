@@ -127,10 +127,11 @@ object Tar {
       // Set the permissions on the extracted file or directory
       Files.setPosixFilePermissions(file, permissionSet.asJava)
 
+    val bufferSize = 64 * 1024
     val tis =
       if !compressed
-      then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), 64 * 1024))
-      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive)), 64 * 1024))
+      then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), bufferSize))
+      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive), bufferSize), bufferSize))
 
     try
       if !directory.exists() then directory.mkdirs()
