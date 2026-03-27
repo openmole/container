@@ -19,7 +19,7 @@ package container
 
 import better.files._
 
-object Test extends App {
+@main def Test =
 
   import squants.time.TimeConversions._
 
@@ -34,7 +34,7 @@ object Test extends App {
   val debian = RegistryImage("debian")
   val java = RegistryImage("openmole/jvm", "21.3")
 
-  val saved = ImageDownloader.downloadContainerImage(julia, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
+  val saved = ImageDownloader.downloadContainerImage(debian, File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("python", "3.10.2"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
   //val saved = ImageDownloader.downloadContainerImage(RegistryImage("debian", "12-slim"), File("/tmp/docker-repo/").toJava, 1 minutes, executor = ImageDownloader.Executor.parallel)
 
@@ -50,7 +50,7 @@ object Test extends App {
   //    bind = Seq("/tmp/test" -> "/tmp/test"))
 
 
-  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("echo $HOME", "TERM=dumb julia -e 'using Pkg; Pkg.add(\"JSON\")'"))
+  Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("echo $HOME"))
 
   //Singularity.executeFlatImage(flattenedImage, File("/tmp/container").toJava, commands = Seq("touch test.test"))
 
@@ -59,7 +59,7 @@ object Test extends App {
   val buildSif = Singularity.buildSIF(flattenedImage, sifImage.toJava)
   val overlay = Singularity.createOverlay(File("/tmp/overlay.img").toJava)
 
-  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("TERM=dumb julia -e 'using Pkg; Pkg.add(\"JSON\")'")) //scala-cli run --power --offline --server=false -j 21 --script-snippet  \"println()\""))
+  Singularity.executeImage(buildSif, File("/tmp/container").toJava, overlay = Some(overlay), commands = Seq("ls -R")) //scala-cli run --power --offline --server=false -j 21 --script-snippet  \"println()\""))
   //Singularity.executeImage(buildSif, File("/tmp/container").toJava, tmpFS = true, commands = Seq("whoami", "echo $HOME", "ls -la ~"))
 
   //  Singularity.executeFlatImage(
@@ -95,4 +95,4 @@ object Test extends App {
   //print(Singularity.execute(build, Some(Seq("/bin/ls", "/"))))
   //finally Docker.clean(build)
 
-}
+

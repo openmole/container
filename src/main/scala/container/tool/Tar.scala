@@ -124,15 +124,13 @@ object Tar {
       if (mode & 0x002) != 0 then permissionSet += PosixFilePermission.OTHERS_WRITE
       if (mode & 0x001) != 0 then permissionSet += PosixFilePermission.OTHERS_EXECUTE
 
-      val f = file.toRealPath().toFile
-
       // Set the permissions on the extracted file or directory
-      Files.setPosixFilePermissions(f.toPath, permissionSet.asJava)
+      Files.setPosixFilePermissions(file, permissionSet.asJava)
 
     val tis =
       if !compressed
-      then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive)))
-      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive))))
+      then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), 64 * 1024))
+      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive)), 64 * 1024))
 
     try
       if !directory.exists() then directory.mkdirs()
