@@ -61,10 +61,14 @@ object Singularity:
 
     if permissive then rootDirectory.listRecursively.foreach(f => setPermissions(f.toJava))
 
-    ProcessUtil.execute(
-      Seq(singularityCommand, "build", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
-      logger,
-      logger)
+    val ret =
+      ProcessUtil.execute(
+        Seq(singularityCommand, "build", "--force", file.getAbsolutePath, rootDirectory.toJava.getAbsolutePath),
+        logger,
+        logger)
+
+    if ret != 0
+    then throw new RuntimeException(s"Failed to build SIF image, singularity exited with code $ret")
 
     SingularityImageFile(
       file = file,
