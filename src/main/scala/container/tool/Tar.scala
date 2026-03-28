@@ -100,10 +100,12 @@ object Tar {
 
 
 
-  def extract(archive: File, directory: File, overwrite: Boolean = true, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) =
+  def extract(archive: File, directory: File, compressed: Boolean = false, filter: Option[TarArchiveEntry => Boolean] = None) =
     import java.nio.file.{Files, Paths}
     import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
     import java.io.FileInputStream
+
+    val bufferSize = 256 * 1024
 
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, mode: Int) =
@@ -127,7 +129,18 @@ object Tar {
       // Set the permissions on the extracted file or directory
       Files.setPosixFilePermissions(file, permissionSet.asJava)
 
-    val bufferSize = 64 * 1024
+
+    def copy(tis: java.io.InputStream, dest: Path) =
+      import java.nio.file.StandardOpenOption
+      val out = Files.newOutputStream(dest, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+      try
+        val buf = new Array[Byte](bufferSize)
+        var n = tis.read(buf)
+        while n > 0 do
+          out.write(buf, 0, n)
+          n = tis.read(buf)
+      finally out.close()
+
     val tis =
       if !compressed
       then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), bufferSize))
@@ -137,34 +150,43 @@ object Tar {
       if !directory.exists() then directory.mkdirs()
       if !Files.isDirectory(directory.toPath) then throw new IOException(directory.toString + " is not a directory.")
 
+      case class FileMetaData(path: Path, mode: Int, time: Long)
+      val fileData = ListBuffer[FileMetaData]()
+
       case class DirectoryMetaData(path: Path, mode: Int, time: Long)
       val directoryData = ListBuffer[DirectoryMetaData]()
 
-      case class LinkData(dest: Path, linkName: String, hard: Boolean)
+      case class LinkData(dest: Path, linkName: String, hard: Boolean, time: Long, mode: Int)
       val linkData = ListBuffer[LinkData]()
+      val createdDirs = scala.collection.mutable.HashSet[Path]()
+
+      def createDirectory(p: Path) =
+        if !createdDirs.contains(p)
+        then
+          Files.createDirectories(p)
+          createdDirs += p
 
       def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
 
-      Iterator.continually(tis.getNextTarEntry).takeWhile(_ != null).filter(filterValue).foreach: e ⇒
+      var e = tis.getNextTarEntry
+      while e != null do
         val dest = Paths.get(directory.toString, e.getName)
 
         if e.isDirectory
         then
-          Files.createDirectories(dest)
+          createDirectory(dest)
           directoryData += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
         else
-          Files.createDirectories(dest.getParent)
+          createDirectory(dest.getParent)
 
           // has the entry been marked as a symlink in the archive?
           if e.getLinkName.nonEmpty
-          then linkData += LinkData(dest, e.getLinkName, e.isLink)
-            // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
+          then linkData += LinkData(dest, e.getLinkName, e.isLink, e.getModTime.getTime, e.getMode)
           else
-            Files.copy(tis, dest, Seq(StandardCopyOption.REPLACE_EXISTING).filter { _ ⇒ overwrite }: _*)
-            setMode(dest, e.getMode)
+            copy(tis, dest)
+            fileData += FileMetaData(dest, e.getMode, e.getModTime.getTime)
 
-        dest.toFile.setLastModified(e.getModTime.getTime)
-
+        e = tis.getNextTarEntry
 
       // Process links
       for l <- linkData
@@ -174,16 +196,24 @@ object Tar {
           val link = Paths.get(l.linkName)
           try Files.createSymbolicLink(l.dest, link)
           catch
-            case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+            case e: java.nio.file.FileAlreadyExistsException =>
               l.dest.toFile.delete()
               Files.createSymbolicLink(l.dest, link)
         else
           val link = Paths.get(directory.toString, l.linkName)
           try Files.createLink(l.dest, link)
           catch
-            case e: java.nio.file.FileAlreadyExistsException if overwrite =>
+            case e: java.nio.file.FileAlreadyExistsException =>
               l.dest.toFile.delete()
               Files.createLink(l.dest, link)
+
+          setMode(link, l.mode)
+        l.dest.toFile.setLastModified(l.time)
+
+      for f <- fileData
+      do
+        setMode(f.path, f.mode)
+        f.path.toFile.setLastModified(f.time)
 
       // Set directory right after extraction in case some directory are not writable
       for r <- directoryData
