@@ -105,7 +105,7 @@ object Tar {
     import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
     import java.io.FileInputStream
 
-    val bufferSize = 256 * 1024
+    val bufferSize = 1024 * 1024
 
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, mode: Int) =
