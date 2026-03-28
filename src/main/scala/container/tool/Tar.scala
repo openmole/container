@@ -105,7 +105,7 @@ object Tar {
     import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
     import java.io.FileInputStream
 
-    val bufferSize = 256 * 1024
+    val bufferSize = 4 * 1024 * 1024
 
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, mode: Int) =
@@ -143,8 +143,8 @@ object Tar {
 
     val tis =
       if !compressed
-      then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), bufferSize))
-      else new TarArchiveInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(archive), bufferSize), bufferSize))
+      then new TarArchiveInputStream(new FileInputStream(archive), bufferSize)
+      else new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(archive), bufferSize), bufferSize)
 
     try
       if !directory.exists() then directory.mkdirs()
