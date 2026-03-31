@@ -140,6 +140,13 @@ object Tar {
           n = tis.read(buf)
       finally out.close()
 
+    val createdDirs = scala.collection.mutable.HashSet[Path]()
+    def createDirectory(p: Path) =
+      if !createdDirs.contains(p)
+      then
+        Files.createDirectories(p)
+        createdDirs += p
+
     val tis =
       if !compressed
       then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), bufferSize))
@@ -162,10 +169,10 @@ object Tar {
 
         if e.isDirectory
         then
-          Files.createDirectories(dest)
+          createDirectory(dest)
           directoryData += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
         else
-          Files.createDirectories(dest.getParent)
+          createDirectory(dest.getParent)
 
           // has the entry been marked as a symlink in the archive?
           if e.getLinkName.nonEmpty
