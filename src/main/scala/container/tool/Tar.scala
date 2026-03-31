@@ -156,10 +156,13 @@ object Tar {
       if !directory.exists() then directory.mkdirs()
       if !Files.isDirectory(directory.toPath) then throw new IOException(directory.toString + " is not a directory.")
 
+      case class FileMetaData(path: Path, mode: Int, time: Long)
+      val fileData = ListBuffer[FileMetaData]()
+
       case class DirectoryMetaData(path: Path, mode: Int, time: Long)
       val directoryData = ListBuffer[DirectoryMetaData]()
 
-      case class LinkData(dest: Path, linkName: String, hard: Boolean)
+      case class LinkData(dest: Path, linkName: String, hard: Boolean, mode: Int, time: Long)
       val linkData = ListBuffer[LinkData]()
 
       def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
@@ -176,13 +179,11 @@ object Tar {
 
           // has the entry been marked as a symlink in the archive?
           if e.getLinkName.nonEmpty
-          then linkData += LinkData(dest, e.getLinkName, e.isLink)
+          then linkData += LinkData(dest, e.getLinkName, e.isLink, e.getMode, e.getModTime.getTime)
             // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
           else
             copy(tis, dest)
-            setMode(dest, e.getMode)
-
-        dest.toFile.setLastModified(e.getModTime.getTime)
+            fileData += FileMetaData(dest, e.getMode, e.getModTime.getTime)
 
 
       // Process links
@@ -203,6 +204,16 @@ object Tar {
             case e: java.nio.file.FileAlreadyExistsException =>
               l.dest.toFile.delete()
               Files.createLink(l.dest, link)
+
+          setMode(l.dest, l.mode)
+
+        l.dest.toFile.setLastModified(l.time)
+
+
+      for f <- fileData
+      do
+        setMode(f.path, f.mode)
+        f.path.toFile.setLastModified(f.time)
 
       // Set directory right after extraction in case some directory are not writable
       for r <- directoryData
