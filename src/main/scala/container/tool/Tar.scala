@@ -105,6 +105,8 @@ object Tar {
     import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
     import java.io.FileInputStream
 
+    val bufferSize = 1024 * 1024
+
     /** set mode from an integer as retrieved from a Tar archive */
     def setMode(file: Path, mode: Int) =
       import java.nio.file.attribute.*
@@ -127,7 +129,17 @@ object Tar {
       // Set the permissions on the extracted file or directory
       Files.setPosixFilePermissions(file, permissionSet.asJava)
 
-    val bufferSize = 64 * 1024
+    def copy(tis: java.io.InputStream, dest: Path) =
+      import java.nio.file.StandardOpenOption
+      val out = Files.newOutputStream(dest, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+      try
+        val buf = new Array[Byte](bufferSize)
+        var n = tis.read(buf)
+        while n > 0 do
+          out.write(buf, 0, n)
+          n = tis.read(buf)
+      finally out.close()
+
     val tis =
       if !compressed
       then new TarArchiveInputStream(new BufferedInputStream(new FileInputStream(archive), bufferSize))
@@ -160,7 +172,7 @@ object Tar {
           then linkData += LinkData(dest, e.getLinkName, e.isLink)
             // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
           else
-            Files.copy(tis, dest, StandardCopyOption.REPLACE_EXISTING)
+            copy(tis, dest)
             setMode(dest, e.getMode)
 
         dest.toFile.setLastModified(e.getModTime.getTime)
