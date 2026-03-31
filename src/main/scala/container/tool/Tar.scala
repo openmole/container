@@ -167,28 +167,46 @@ object Tar {
 
       def filterValue(e: TarArchiveEntry) = filter.map(_(e)).getOrElse(true)
 
-      Iterator.continually(tis.getNextTarEntry).takeWhile(_ != null).filter(filterValue).foreach: e ⇒
-        val dest = Paths.get(directory.toString, e.getName)
+      var e = tis.getNextTarEntry
 
-        if e.isDirectory
+      while
+        e != null
+      do
+        if filterValue(e)
         then
-          createDirectory(dest)
-          directoryData += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
-        else
-          createDirectory(dest.getParent)
+          val dest = Paths.get(directory.toString, e.getName)
 
-          // has the entry been marked as a symlink in the archive?
-          if e.getLinkName.nonEmpty
-          then linkData += LinkData(dest, e.getLinkName, e.isLink, e.getMode, e.getModTime.getTime)
-            // file copy from an InputStream does not support COPY_ATTRIBUTES, nor NOFOLLOW_LINKS
+          if e.isDirectory
+          then directoryData += DirectoryMetaData(dest, e.getMode, e.getModTime.getTime)
           else
-            copy(tis, dest)
-            fileData += FileMetaData(dest, e.getMode, e.getModTime.getTime)
+
+            if e.getLinkName.nonEmpty
+            then
+              linkData += LinkData(dest, e.getLinkName, e.isLink, e.getMode, e.getModTime.getTime)
+            else
+              createDirectory(dest.getParent)
+              copy(tis, dest)
+              fileData += FileMetaData(dest, e.getMode, e.getModTime.getTime)
+
+        e = tis.getNextTarEntry
+
+      for f <- fileData
+        do
+          setMode(f.path, f.mode)
+          f.path.toFile.setLastModified(f.time)
+
+      // Set directory right after extraction in case some directory are not writable
+      for r <- directoryData
+        do
+          createDirectory(r.path)
+          setMode(r.path, r.mode)
+          r.path.toFile.setLastModified(r.time)
 
 
       // Process links
       for l <- linkData
       do
+        createDirectory(l.dest.getParent)
         if !l.hard
         then
           val link = Paths.get(l.linkName)
@@ -210,16 +228,6 @@ object Tar {
         l.dest.toFile.setLastModified(l.time)
 
 
-      for f <- fileData
-      do
-        setMode(f.path, f.mode)
-        f.path.toFile.setLastModified(f.time)
-
-      // Set directory right after extraction in case some directory are not writable
-      for r <- directoryData
-      do
-        setMode(r.path, r.mode)
-        r.path.toFile.setLastModified(r.time)
 
     finally tis.close()
 
