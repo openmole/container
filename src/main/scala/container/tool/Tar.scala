@@ -185,6 +185,9 @@ object Tar {
               linkData += LinkData(dest, e.getLinkName, e.isLink, e.getMode, e.getModTime.getTime)
             else
               createDirectory(dest.getParent)
+              // Handle the case where the destination is a logical link
+              // the output stream would be opened on the target of the link
+              Files.deleteIfExists(dest)
               copy(tis, dest)
               fileData += FileMetaData(dest, e.getMode, e.getModTime.getTime)
 
