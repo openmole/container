@@ -1,3 +1,12 @@
 jdk:
   - openjdk17
 
+before_install:
+  - sdk update
+  - sdk install sbt 2.0.7
+  - sdk use sbt 2.0.7
+
+install:
+  - sbt --jvm-client publishM2
+
+

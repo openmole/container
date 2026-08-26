@@ -29,7 +29,7 @@ scalacOptions ++= Seq("-Xtarget:11", "-language:higherKinds", "-language:postfix
 
 //ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
 
-ThisBuild / publishMavenStyle := true
+/*ThisBuild / publishMavenStyle := true
 publishArtifact in Test in ThisBuild := false
 //publishArtifact := false
 pomIncludeRepository in ThisBuild := { _ => false }
@@ -84,6 +84,6 @@ releaseProcess := Seq[ReleaseStep](
   pushChanges
 )
 
-
+*/
 
 
