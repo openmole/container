@@ -262,6 +262,7 @@ object Singularity:
     workDirectory: Option[String] = None,
     environmentVariables: Seq[(String, String)] = Vector.empty,
     home: Option[String] = Some("/home/user"),
+    userNamespace: Boolean = true,
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
     singularityWorkdir: Option[File] = None,
@@ -302,6 +303,7 @@ object Singularity:
 
       def pwd = wd.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
       def fakeroot = if useFakeroot then Seq("--fakeroot") else Seq()
+      def userNamespaceValue = if userNamespace then Seq("--userns") else Seq()
 
       def singularityWorkdirArgument =
         singularityWorkdir match
@@ -342,6 +344,7 @@ object Singularity:
           tmpFSOption ++
           overlayOption ++
           fakeroot ++
+          userNamespaceValue ++
           singularityWorkdirArgument ++
           pwd ++
           absoluteBind.flatMap((f, t) => Seq("-B", s"$f:$t")) ++
