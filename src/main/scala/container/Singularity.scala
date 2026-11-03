@@ -271,6 +271,7 @@ object Singularity:
     userNamespace: Boolean = true,
     useFakeroot: Boolean = false,
     verbose: Boolean = false,
+    debug: Boolean = false,
     singularityWorkdir: Option[File] = None,
     output: PrintStream = tool.outputLogger,
     error: PrintStream = tool.outputLogger) =
@@ -310,7 +311,8 @@ object Singularity:
       def pwd = wd.map(w => Seq("--pwd", w)).getOrElse(Seq.empty)
       def fakeroot = if useFakeroot then Seq("--fakeroot") else Seq()
       def userNamespaceValue = if userNamespace then Seq("--userns") else Seq()
-
+      def debugValue = if debug then Seq("--debug") else Seq()
+      
       def singularityWorkdirArgument =
         singularityWorkdir match
           case Some(w) => Seq("--workdir", w.getAbsolutePath)
@@ -341,13 +343,14 @@ object Singularity:
         else Seq("sh", s"/$runFile")
 
       ProcessUtil.execute(
-        Seq(
-          singularityCommand,
-          "--silent",
-          "exec",
-          "--no-home",
-          "--contain",
-          "--cleanenv") ++
+        Seq(singularityCommand) ++
+          debugValue ++ 
+          Seq(
+            "--silent",
+            "exec",
+            "--no-home",
+            "--contain",
+            "--cleanenv") ++
           tmpFSOption ++
           overlayOption ++
           fakeroot ++
