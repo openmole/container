@@ -34,7 +34,9 @@ object Singularity:
     layers: Seq[String],
     command: Option[String] = None)
 
-  case class OverlayImage(image: File)
+  sealed trait Overlay
+  case class OverlayImage(image: File) extends Overlay
+  case class OverlayDirectory(path: File) extends Overlay
 
   def buildSIF(
     image: FlatImage,
@@ -198,6 +200,10 @@ object Singularity:
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     finally buildDirectory.delete()
 
+  def createOverlayDirectory(overlay: File) =
+    overlay.mkdirs()
+    OverlayDirectory(overlay)
+
   def createOverlay(
     overlay: File,
     overlaySize: Information = Gibibytes(50),
@@ -254,7 +260,7 @@ object Singularity:
   def executeImage(
     image: SingularityImageFile,
     tmpDirectory: File,
-    overlay: Option[OverlayImage] = None,
+    overlay: Option[Overlay] = None,
     tmpFS: Boolean = false,
     commands: Seq[String] = Seq.empty,
     singularityCommand: String = "singularity",
@@ -322,8 +328,9 @@ object Singularity:
           l -> nd
 
       def overlayOption: Seq[String] =
-        overlay.toSeq.flatMap: o =>
-          Seq("--overlay", o.image.getAbsolutePath)
+        overlay.toSeq.flatMap:
+          case o: OverlayImage => Seq("--overlay", o.image.getAbsolutePath)
+          case o: OverlayDirectory => Seq("--overlay", o.path.getAbsolutePath)
 
       def tmpFSOption =
         if tmpFS then Seq("--writable-tmpfs") else Seq()
