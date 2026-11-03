@@ -200,7 +200,7 @@ object Singularity:
       // TODO copy new directories at the root in the sandbox back to rootfs ?
     finally buildDirectory.delete()
 
-  def createOverlayDirectory(overlay: File) =
+  def createDirectoryOverlay(overlay: File) =
     overlay.mkdirs()
     OverlayDirectory(overlay)
 
