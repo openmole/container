@@ -112,7 +112,7 @@ object ImageDownloader {
         imageDirectoryValue.createDirectoryIfNotExists()
         existingIndexDirectory.createDirectoryIfNotExists()
 
-        def fromManifestV2(manifestValue: ImageManifestV2Schema2) =
+        def fromManifestV2(manifestValue: ImageManifestSchema2) =
           val layers = manifestValue.layers.map(_.digest)
 
           val configString =
@@ -124,7 +124,7 @@ object ImageDownloader {
 
         val (layerHashes, configString) =
           manifestValue match
-            case imv: ImageManifestV2Schema2List =>
+            case imv: ImageManifestSchema2List =>
               import io.circe.generic.auto.*
               val manifests = imv.manifests
               
@@ -132,10 +132,10 @@ object ImageDownloader {
               val query = s"${baseURL(dockerImage)}/manifests/${mid.digest}"
               val headers = Seq("Accept" -> mid.mediaType)
               val manifestString = Retry.retry(retryCount)(download(query, timeout, proxy = proxy.map(HttpProxy.toHost), headers = headers))
-              val manifestValue = decode[ImageManifestV2Schema2](manifestString).toTry.get
+              val manifestValue = decode[ImageManifestSchema2](manifestString).toTry.get
               fromManifestV2(manifestValue)
-            case manifestValue: ImageManifestV2Schema2 => fromManifestV2(manifestValue)
-            case manifestValue: ImageManifestV2Schema1 =>
+            case manifestValue: ImageManifestSchema2 => fromManifestV2(manifestValue)
+            case manifestValue: ImageManifestSchema1 =>
               val conf = manifestValue.history.get
               val raw = conf.map(_.v1Compatibility)
 

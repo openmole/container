@@ -146,7 +146,7 @@ object Registry {
   sealed trait LayerElement
   final case class Layer(digest: String) extends LayerElement
   final case class LayerConfig(digest: String) extends LayerElement
-  case class Manifest(value: ImageManifestV2Schema1, image: RegistryImage)
+  case class Manifest(value: ImageManifestSchema1, image: RegistryImage)
 
   object Token {
 
@@ -227,20 +227,26 @@ object Registry {
 
   def decodeConfig(configContent: String) = decode[ImageJSON](configContent).toTry
   def decodeTopLevelManifest(manifestContent: String) = decode[List[TopLevelImageManifest]](manifestContent).map(_.head).toTry
+
+  def decodeOCIIndex(manifestContent: String) = decode[OCI.OciIndex](manifestContent).toTry
+  //def decodeManiftV2(manifestContent: String) = decode[OCI.Manife](manifestContent).toTry
+
+  def decodeManifestSchema2(manifestContent: String) = decode[ImageManifestSchema2](manifestContent).toTry
+
   def decodeManifest(manifestContent: String): util.Try[ImageManifest] =
     val parsed = parse(manifestContent).toTry.get
 
     parsed.hcursor.get[String]("mediaType").toTry.get match
-      case "application/vnd.oci.image.index.v1+json" => decode[ImageManifestV2Schema2List](manifestContent).toTry
-      case "application/vnd.docker.distribution.manifest.list.v2+json" => decode[ImageManifestV2Schema2List](manifestContent).toTry
-      case "application/vnd.docker.distribution.manifest.v2+json" => decode[ImageManifestV2Schema2](manifestContent).toTry
-      case other => decode[ImageManifestV2Schema1](manifestContent).toTry
+      case "application/vnd.oci.image.index.v1+json" => decode[ImageManifestSchema2List](manifestContent).toTry
+      case "application/vnd.docker.distribution.manifest.list.v2+json" => decode[ImageManifestSchema2List](manifestContent).toTry
+      case "application/vnd.docker.distribution.manifest.v2+json" => decode[ImageManifestSchema2](manifestContent).toTry
+      case other => decode[ImageManifestSchema1](manifestContent).toTry
 
   object Config:
     def workDirectory(config: ImageJSON) = config.config.flatMap(_.WorkingDir) orElse config.container_config.flatMap(_.WorkingDir)
     def env(config: ImageJSON) = config.config.flatMap(_.Env) orElse config.container_config.flatMap(_.Env)
 
-  def layers(manifest: ImageManifestV2Schema1): Seq[Layer] =
+  def layers(manifest: ImageManifestSchema1): Seq[Layer] =
     for {
       fsLayers ← manifest.fsLayers.toSeq
       fsLayer ← fsLayers

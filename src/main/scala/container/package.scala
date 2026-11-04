@@ -35,10 +35,10 @@ package object container:
       (root(flatImage).toScala / path).toJava
 
   case class FlatImage(
-    file: File,
-    workDirectory: Option[String],
-    env: Option[Seq[String]],
-    layers: Seq[String],
-    command: Option[String] = None)
+                        file: File,
+                        workDirectory: Option[String],
+                        env: Option[Seq[String]],
+                        layers: Seq[String],
+                        command: Option[String] = None)
 
   case class SavedImage(file: File)

@@ -1,6 +1,6 @@
 
-scalaVersion := "3.3.5"
-crossScalaVersions := Seq("3.3.5")
+scalaVersion := "3.9.0"
+crossScalaVersions := Seq("3.9.0")
 name := "container"
 organization := "org.openmole"
 
@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 //libraryDependencies += "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
-scalacOptions ++= Seq("-Xtarget:11", "-language:higherKinds", "-language:postfixOps", "-language:implicitConversions", "-Xmax-inlines:50")
+scalacOptions ++= Seq("-Xtarget:17", "-language:higherKinds", "-language:postfixOps", "-language:implicitConversions", "-Xmax-inlines:50")
 
 /* Publish */
 

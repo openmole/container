@@ -154,7 +154,7 @@ object DockerMetadata {
   implicit val imageJSONDecoder: Decoder[ImageJSON] = deriveDecoder
   implicit val imageJSONEncoder: Encoder[ImageJSON] = deriveEncoder
 
-  def containerConfig(manifest: ImageManifestV2Schema1) =
+  def containerConfig(manifest: ImageManifestSchema1) =
     val rawJsonImage = parse(manifest.history.get.head.v1Compatibility).getOrElse(Json.Null)
     (rawJsonImage \\ "config").head.as[ContainerConfig].toOption
 
@@ -227,7 +227,7 @@ object DockerMetadata {
    * @see https://docs.docker.com/registry/spec/manifest-v2-1/
    */
   // FIXME consider all documented fields to be present (remove option)???
-  case class ImageManifestV2Schema1(
+  case class ImageManifestSchema1(
     // <--- documented fields  --->
     name: Option[String],
     tag: Option[String],
@@ -239,7 +239,7 @@ object DockerMetadata {
     signatures: Option[List[Signature]] = None) extends ImageManifest
 
   // Schema 2
-  object ImageManifestV2Schema2:
+  object ImageManifestSchema2:
     object ManifestField:
       //case class Annotations(`vnd.docker.reference.digest`: Option[String], `vnd.docker.reference.type`: Option[String])
       case class Platform(architecture: String, os: String)
@@ -252,12 +252,12 @@ object DockerMetadata {
 
     case class Media(mediaType: String, digest: String, size: Int)
 
-  case class ImageManifestV2Schema2(
-    config: ImageManifestV2Schema2.Media,
-    layers: Seq[ImageManifestV2Schema2.Media]) extends ImageManifest
+  case class ImageManifestSchema2(
+    config: ImageManifestSchema2.Media,
+    layers: Seq[ImageManifestSchema2.Media]) extends ImageManifest
 
-  case class ImageManifestV2Schema2List(
-    manifests: Seq[ImageManifestV2Schema2.ManifestField]) extends ImageManifest
+  case class ImageManifestSchema2List(
+    manifests: Seq[ImageManifestSchema2.ManifestField]) extends ImageManifest
 
   // TODO ImageManifestV2Schema2 (ref: https://docs.docker.com/registry/spec/manifest-v2-2/) (example: https://gist.github.com/harche/6f29c6fe8479cb6334d2)
 
@@ -275,4 +275,43 @@ object DockerMetadata {
     Layers: Seq[String],
     RepoTags: Seq[String],
     Parent: Option[String] = None)
+
+
+  object OCI:
+    def parseDigest(s: String) =
+      val Array(hashType, hash) = s.split(":")
+      (hashType = hashType, hash = hash)
+    
+    def indexHeader = "application/vnd.oci.image.index.v1+json"
+
+    case class OciIndex(
+      schemaVersion: Int,
+      mediaType: Option[String],
+      manifests: List[ManifestDescriptor],
+      annotations: Option[Map[String, String]]
+    )
+
+    case class ManifestDescriptor(
+      mediaType: String,
+      digest: String,
+      size: Long,
+      platform: Option[Platform],
+      annotations: Option[Map[String, String]])
+
+    case class ImageIndex(
+      schemaVersion: Int,
+      mediaType: Option[String],
+      manifests: List[IndexEntry])
+
+    case class IndexEntry(
+      mediaType: String,
+      digest: String,
+      size: Long,
+      platform: Option[Platform],
+      annotations: Option[Map[String, String]])
+
+    case class Platform(
+      architecture: String,
+      os: String,
+      variant: Option[String] = None)
 }

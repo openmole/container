@@ -167,7 +167,7 @@ object Singularity:
       def createDirectories() =
         def removeHeadSlash(d: String) = d.dropWhile(_.isSpaceChar).dropWhile(_ == '/')
         def relativeWd = wd.toSeq.map(removeHeadSlash)
-        (Seq("dev", "root", "tmp", "var/tmp") ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir) createDirectoryIfNotExists (createParents = true) }
+        (Seq("dev", "root", "tmp", "var/tmp") ++ relativeWd).foreach { dir => (image.file.toScala / FlatImage.rootfsName / dir).createDirectoryIfNotExists(createParents = true) }
 
       def execute =
         if verbose

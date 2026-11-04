@@ -41,34 +41,73 @@ object ImageBuilder:
     container.tool.copyOrMerge(file.toPath, destinationFile.toPath)
 
   def flattenImage(image: SavedImage, workDirectory: java.io.File): FlatImage =
-    def extractLayers(savedImage: SavedImage, layers: Seq[String], destination: File) =
+    case class Layer(path: String, zipped: Boolean)
+
+    def extractLayers(savedImage: SavedImage, layers: Seq[Layer], destination: File) =
       destination.toScala.createDirectoryIfNotExists()
 
-      layers.zipWithIndex.foreach: (layerName, i) =>
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
+      layers.zipWithIndex.foreach: (l, i) =>
+        Tar.extract((savedImage.file.toScala / l.path).toJava, destination, compressed = l.zipped, filter = Some(e => OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
         removeWhiteouts(destination)
-        Tar.extract((savedImage.file.toScala / layerName).toJava, destination, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
+        Tar.extract((savedImage.file.toScala / l.path).toJava, destination, compressed = l.zipped, filter = Some(e => !OCI.WhiteoutUtils.isWhiteout(java.nio.file.Paths.get(e.getName))))
 
+    def extractV1 =
+      val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
+      val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
 
-    val manifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
-    val config = Registry.decodeConfig(image.file.toScala / manifest.Config contentAsString).get
+      val rootfs = workDirectory.toScala / FlatImage.rootfsName
+      extractLayers(image, manifest.Layers.map(l => Layer(l, false)), rootfs.toJava)
 
-    val rootfs = workDirectory.toScala / FlatImage.rootfsName
-    extractLayers(image, manifest.Layers, rootfs.toJava)
+      FlatImage(
+        file = workDirectory,
+        workDirectory = Registry.Config.workDirectory(config),
+        env = Registry.Config.env(config),
+        layers = manifest.Layers)
 
-    FlatImage(
-      file = workDirectory,
-      workDirectory = Registry.Config.workDirectory(config),
-      env = Registry.Config.env(config),
-      layers = manifest.Layers)
+    def extractOCI(architecture: String = "amd64") =
+      val index = Registry.decodeOCIIndex((image.file.toScala / "index.json").contentAsString).get
 
-  def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
-    FlatImage(
-      file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
-      workDirectory = flatImage.workDirectory,
-      env = flatImage.env,
-      layers = flatImage.layers,
-      command = flatImage.command)
+      val blobIndex =
+        val d = DockerMetadata.OCI.parseDigest(index.manifests.head.digest)
+        Registry.decodeOCIIndex((image.file.toScala / "blobs" / d.hashType / d.hash).contentAsString).get
+
+      val manifest =
+        val descriptor = blobIndex.manifests.find(_.platform.map(_.architecture).contains(architecture)).head
+        val d = DockerMetadata.OCI.parseDigest(descriptor.digest)
+        Registry.decodeManifestSchema2((image.file.toScala / "blobs" / d.hashType / d.hash).contentAsString).get
+
+      val layers =
+        manifest.layers.map: l =>
+          val d = DockerMetadata.OCI.parseDigest(l.digest)
+          val path = s"blobs/${d.hashType}/${d.hash}"
+          l.mediaType.split('/').last.split('.').last match
+            case "tar+gzip" => Layer(path, true)
+            case _ => Layer(path, false)
+
+      val rootfs = workDirectory.toScala / FlatImage.rootfsName
+
+      extractLayers(image, layers, rootfs.toJava)
+
+      val topLevelManifest = Registry.decodeTopLevelManifest((image.file.toScala / "manifest.json").contentAsString).get
+      val config = Registry.decodeConfig(image.file.toScala / topLevelManifest.Config contentAsString).get
+
+      FlatImage(
+        file = workDirectory,
+        workDirectory = Registry.Config.workDirectory(config),
+        env = Registry.Config.env(config),
+        layers = topLevelManifest.Layers)
+
+    def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
+      FlatImage(
+        file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
+        workDirectory = flatImage.workDirectory,
+        env = flatImage.env,
+        layers = flatImage.layers,
+        command = flatImage.command)
+
+    if (image.file.toScala / "index.json").exists()
+    then extractOCI()
+    else extractV1
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
 
