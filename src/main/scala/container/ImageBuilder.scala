@@ -97,17 +97,17 @@ object ImageBuilder:
         env = Registry.Config.env(config),
         layers = topLevelManifest.Layers)
 
-    def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
-      FlatImage(
-        file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
-        workDirectory = flatImage.workDirectory,
-        env = flatImage.env,
-        layers = flatImage.layers,
-        command = flatImage.command)
-
     if (image.file.toScala / "index.json").exists()
     then extractOCI()
     else extractV1
+
+  def duplicateFlatImage(flatImage: FlatImage, directory: java.io.File) =
+    FlatImage(
+      file = flatImage.file.toScala.copyTo(directory.toScala)(BFile.CopyOptions(overwrite = true) ++ BFile.LinkOptions.noFollow).toJava,
+      workDirectory = flatImage.workDirectory,
+      env = flatImage.env,
+      layers = flatImage.layers,
+      command = flatImage.command)
 
   def checkImageFile(file: File): Unit = if (!file.exists()) throw FileNotFound(file)
 
